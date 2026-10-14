@@ -49,8 +49,20 @@ final class AppController {
     }
 
     private init() throws {
-        let settings = AppSettings()
-        let profiles = ProfileStore(directory: ProfileStore.defaultDirectory, defaults: .standard)
+        let location = SyncLocation.resolve()
+        var startupError: String?
+        do {
+            try SyncBootstrap.run(
+                location: location, legacyDirectory: SyncLocation.defaultLocalDirectory, legacyDefaults: .standard
+            )
+        } catch {
+            startupError = "Не удалось подготовить папку синхронизации: \(error.localizedDescription)"
+        }
+        let sharedSettings = SharedSettingsStore(directory: location.directory)
+        sharedSettings.reload()
+        sharedSettings.startWatching()
+        let settings = AppSettings(shared: sharedSettings, syncLocation: location, startupError: startupError)
+        let profiles = ProfileStore(directory: location.profilesDirectory, defaults: .standard)
         let history = try HistoryStore.open(at: HistoryStore.defaultURL)
         try history.markInterrupted()
         let audio = try AudioStore(directory: AudioStore.defaultDirectory)
@@ -136,6 +148,7 @@ final class AppController {
             return
         }
 
+        settings.shared.reload()
         profiles.reload()
         let profile = profiles.activeProfile
         let id = UUID().uuidString

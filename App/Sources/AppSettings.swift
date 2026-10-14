@@ -5,60 +5,69 @@ import OpenWhisperCore
 @MainActor
 @Observable
 final class AppSettings {
+    let shared: SharedSettingsStore
+    let syncLocation: SyncLocation
+    /// Ошибка подготовки или записи общей папки; показывается в настройках.
+    private(set) var saveError: String?
+
     @ObservationIgnored private let defaults: UserDefaults
 
+    // MARK: Общие (settings.json в общей папке)
+
     var defaultTranscriptionModel: String {
-        didSet { defaults.set(defaultTranscriptionModel, forKey: Keys.transcriptionModel) }
+        get { shared.settings.defaultTranscriptionModel }
+        set { updateShared { $0.defaultTranscriptionModel = newValue } }
     }
     var defaultLLMModel: String {
-        didSet { defaults.set(defaultLLMModel, forKey: Keys.llmModel) }
+        get { shared.settings.defaultLLMModel }
+        set { updateShared { $0.defaultLLMModel = newValue } }
     }
     var audioLimitGB: Double {
-        didSet { defaults.set(audioLimitGB, forKey: Keys.audioLimitGB) }
+        get { shared.settings.audioLimitGB }
+        set { updateShared { $0.audioLimitGB = newValue } }
     }
     var soundsEnabled: Bool {
-        didSet { defaults.set(soundsEnabled, forKey: Keys.soundsEnabled) }
+        get { shared.settings.soundsEnabled }
+        set { updateShared { $0.soundsEnabled = newValue } }
     }
+    var showIndicator: Bool {
+        get { shared.settings.showIndicator }
+        set { updateShared { $0.showIndicator = newValue } }
+    }
+
+    // MARK: Локальные (UserDefaults этой машины)
+
     /// uniqueID микрофона; пустая строка — системный по умолчанию.
     var inputDeviceUID: String {
         didSet { defaults.set(inputDeviceUID, forKey: Keys.inputDeviceUID) }
     }
-    var showIndicator: Bool {
-        didSet { defaults.set(showIndicator, forKey: Keys.showIndicator) }
-    }
 
     private enum Keys {
-        static let transcriptionModel = "defaultTranscriptionModel"
-        static let llmModel = "defaultLLMModel"
-        static let audioLimitGB = "audioLimitGB"
-        static let soundsEnabled = "soundsEnabled"
         static let inputDeviceUID = "inputDeviceUID"
-        static let showIndicator = "showIndicator"
     }
 
-    init(defaults: UserDefaults = .standard) {
+    init(shared: SharedSettingsStore, syncLocation: SyncLocation, startupError: String?, defaults: UserDefaults = .standard) {
+        self.shared = shared
+        self.syncLocation = syncLocation
+        self.saveError = startupError
         self.defaults = defaults
-        defaults.register(defaults: [
-            Keys.transcriptionModel: "openai/gpt-4o-transcribe",
-            Keys.llmModel: "openai/gpt-4.1-mini",
-            Keys.audioLimitGB: 1.0,
-            Keys.soundsEnabled: true,
-            Keys.inputDeviceUID: "",
-            Keys.showIndicator: true,
-        ])
-        defaultTranscriptionModel = defaults.string(forKey: Keys.transcriptionModel) ?? "openai/gpt-4o-transcribe"
-        defaultLLMModel = defaults.string(forKey: Keys.llmModel) ?? "openai/gpt-4.1-mini"
-        audioLimitGB = defaults.double(forKey: Keys.audioLimitGB)
-        soundsEnabled = defaults.bool(forKey: Keys.soundsEnabled)
-        inputDeviceUID = defaults.string(forKey: Keys.inputDeviceUID) ?? ""
-        showIndicator = defaults.bool(forKey: Keys.showIndicator)
+        self.inputDeviceUID = defaults.string(forKey: Keys.inputDeviceUID) ?? ""
     }
 
     var pipelineConfig: PipelineConfig {
         PipelineConfig(
             defaultTranscriptionModel: defaultTranscriptionModel,
             defaultLLMModel: defaultLLMModel,
-            audioLimitBytes: Int64(max(audioLimitGB, 0.1) * 1_073_741_824)
+            audioLimitBytes: Int64(audioLimitGB * 1_073_741_824)
         )
+    }
+
+    private func updateShared(_ change: (inout SharedSettings) -> Void) {
+        do {
+            try shared.update(change)
+            saveError = nil
+        } catch {
+            saveError = "Не удалось сохранить settings.json: \(error.localizedDescription)"
+        }
     }
 }
