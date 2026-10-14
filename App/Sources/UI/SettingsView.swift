@@ -103,6 +103,10 @@ struct SettingsView: View {
                     Text("\(loadError). Используются последние корректные значения; любое изменение здесь перезапишет файл.")
                         .foregroundStyle(.red)
                 }
+                if !settings.shared.conflictCopies.isEmpty {
+                    Text("iCloud создал конфликтные копии: \(settings.shared.conflictCopies.joined(separator: ", ")). Используется settings.json; лишние копии можно удалить.")
+                        .foregroundStyle(.orange)
+                }
                 if let saveError = settings.saveError {
                     Text(saveError).foregroundStyle(.red)
                 }
@@ -136,6 +140,10 @@ struct SettingsView: View {
             refresh()
         }
         .onChange(of: focusedModel) { _, _ in commitModels() }
+        // Окно закрывают крестиком, не уходя из поля: фокус не меняется, поэтому сохраняем явно.
+        .onReceive(NotificationCenter.default.publisher(for: NSWindow.willCloseNotification)) { _ in
+            commitModels()
+        }
         .onChange(of: settings.defaultTranscriptionModel) { _, value in
             if focusedModel != .transcription { transcriptionModel = value }
         }
@@ -146,8 +154,9 @@ struct SettingsView: View {
 
     private func refresh() {
         controller.settings.shared.reload()
-        transcriptionModel = controller.settings.defaultTranscriptionModel
-        llmModel = controller.settings.defaultLLMModel
+        // Поле, которое сейчас редактируют, не трогаем: иначе возврат в приложение стёр бы недописанное.
+        if focusedModel != .transcription { transcriptionModel = controller.settings.defaultTranscriptionModel }
+        if focusedModel != .llm { llmModel = controller.settings.defaultLLMModel }
         audioUsage = ByteCountFormatter.string(fromByteCount: controller.audio.totalSize(), countStyle: .file)
         microphoneGranted = Permissions.microphone == .authorized
         accessibilityGranted = Permissions.accessibilityGranted
