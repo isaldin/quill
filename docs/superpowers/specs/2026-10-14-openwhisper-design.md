@@ -78,7 +78,7 @@ Hotkey ─▶ DictationPipeline ─▶ Recorder ─▶ Transcriber ─▶ PostPr
 | Компонент | Ответственность | Зависимости |
 |---|---|---|
 | `HotkeyManager` | Две глобальные горячие клавиши. Клавиша записи: удержание дольше 0.3 с — режим «держи и говори», короткое нажатие — старт/стоп. Клавиша профиля: следующий профиль по кругу. Esc во время записи отменяет её | KeyboardShortcuts (sindresorhus) |
-| `Recorder` | Запись микрофона через AVAudioEngine в AAC `.m4a`, 16 кГц, моно | AVFoundation |
+| `Recorder` | Запись микрофона через AVAudioRecorder в AAC `.m4a`, 16 кГц, моно, 32 кбит/с | AVFoundation |
 | `Transcriber` (протокол), `OpenRouterTranscriber` | `transcribe(audioURL, language) async throws -> Transcript` (текст и стоимость) | `OpenRouterClient` |
 | `PostProcessor` (протокол), `OpenRouterPostProcessor` | `process(rawText, profile) async throws -> Processed` (текст и стоимость) | `OpenRouterClient`, `PromptBuilder` |
 | `PromptBuilder` | Собирает messages для LLM из базового промпта, профиля и словаря. Чистая функция | — |
@@ -89,7 +89,7 @@ Hotkey ─▶ DictationPipeline ─▶ Recorder ─▶ Transcriber ─▶ PostPr
 | `AudioStore` | Пути к аудиофайлам, подсчёт размера, ротация | FileManager |
 | `KeychainStore` | Ключ OpenRouter в Keychain | Security |
 | `DictationPipeline` | Машина состояний диктовки, оркестрация, сохранение в историю на каждом шаге | все компоненты через протоколы |
-| UI | `MenuBarExtra`, окно «История», окно «Настройки», уведомления | SwiftUI, UserNotifications |
+| UI | `MenuBarExtra`; окна «История» и «Настройки» — `NSWindow` с SwiftUI-содержимым (их нужно открывать из кода, например при 401); уведомления | SwiftUI, AppKit, UserNotifications |
 
 Сторонние зависимости (SwiftPM): KeyboardShortcuts, GRDB.swift, Yams.
 
