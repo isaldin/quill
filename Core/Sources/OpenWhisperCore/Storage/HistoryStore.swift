@@ -59,6 +59,8 @@ public struct DictationRecord: Codable, Equatable, Sendable, Identifiable, Fetch
 }
 
 public final class HistoryStore: Sendable {
+    public static let interruptedMessage = "Прервано: приложение закрылось до конца обработки"
+
     private let dbQueue: DatabaseQueue
 
     public init(dbQueue: DatabaseQueue) throws {
@@ -158,6 +160,22 @@ public final class HistoryStore: Sendable {
 
     public func allIDs() throws -> Set<String> {
         Set(try dbQueue.read { try String.fetchAll($0, sql: "SELECT id FROM dictation") })
+    }
+
+    /// Записи, у которых ещё нет сырого текста: их аудио нельзя удалять при ротации.
+    public func idsWithoutRawText() throws -> Set<String> {
+        Set(try dbQueue.read { try String.fetchAll($0, sql: "SELECT id FROM dictation WHERE raw_text IS NULL") })
+    }
+
+    /// Вызывается при запуске: диктовки, оборванные выходом или падением приложения,
+    /// помечаются как failed, чтобы их было видно в истории и можно было распознать заново.
+    @discardableResult
+    public func markInterrupted() throws -> Int {
+        try dbQueue.write { db in
+            try DictationRecord
+                .filter([DictationStatus.recorded.rawValue, DictationStatus.transcribed.rawValue].contains(Column("status")))
+                .updateAll(db, Column("status").set(to: DictationStatus.failed.rawValue), Column("error").set(to: Self.interruptedMessage))
+        }
     }
 
     public func clearAudio(ids: [String]) throws {

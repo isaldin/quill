@@ -32,14 +32,19 @@ public struct AudioStore: Sendable {
     }
 
     /// 1. Удаляет файлы без записи в базе, если они старше orphanGracePeriod.
-    /// 2. Пока суммарный размер больше лимита, удаляет самые старые файлы известных записей.
+    /// 2. Пока суммарный размер больше лимита, удаляет самые старые файлы известных записей,
+    ///    кроме protectedIDs (записи без текста: их аудио — единственная копия диктовки).
     /// Возвращает id записей, у которых удалено аудио, в порядке удаления.
-    public func rotate(limitBytes: Int64, knownIDs: Set<String>, now: Date = Date()) -> [String] {
+    public func rotate(
+        limitBytes: Int64, knownIDs: Set<String>, protectedIDs: Set<String> = [], now: Date = Date()
+    ) -> [String] {
         var known: [FileInfo] = []
         var total: Int64 = 0
         for file in files() {
             if knownIDs.contains(file.id) {
-                known.append(file)
+                if !protectedIDs.contains(file.id) {
+                    known.append(file)
+                }
                 total += file.size
             } else if now.timeIntervalSince(file.modified) > Self.orphanGracePeriod {
                 try? FileManager.default.removeItem(at: file.url)

@@ -194,8 +194,10 @@ public final class DictationPipeline {
     }
 
     private func rotateAudio() {
-        guard let ids = try? history.allIDs() else { return }
-        let removed = audio.rotate(limitBytes: config().audioLimitBytes, knownIDs: ids)
+        guard let ids = try? history.allIDs(), let untranscribed = try? history.idsWithoutRawText() else { return }
+        let removed = audio.rotate(
+            limitBytes: config().audioLimitBytes, knownIDs: ids, protectedIDs: untranscribed
+        )
         guard !removed.isEmpty else { return }
         try? history.clearAudio(ids: removed)
         historyRevision += 1

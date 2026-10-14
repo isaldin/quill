@@ -102,4 +102,31 @@ final class HistoryStoreTests: XCTestCase {
         item.finalText = "итог"
         XCTAssertEqual(item.displayText, "итог")
     }
+
+    func testIDsWithoutRawText() throws {
+        try store.insert(record("pending"))
+        try store.insert(record("done", raw: "текст"))
+        XCTAssertEqual(try store.idsWithoutRawText(), ["pending"])
+    }
+
+    func testMarkInterruptedFailsOnlyUnfinishedDictations() throws {
+        let statuses: [DictationStatus] = [.recorded, .transcribed, .processed, .inserted, .failed]
+        for status in statuses {
+            var item = record(status.rawValue)
+            item.status = status
+            try store.insert(item)
+        }
+        XCTAssertEqual(try store.markInterrupted(), 2)
+        for status in statuses {
+            let item = try XCTUnwrap(store.record(id: status.rawValue))
+            switch status {
+            case .recorded, .transcribed:
+                XCTAssertEqual(item.status, .failed)
+                XCTAssertEqual(item.error, HistoryStore.interruptedMessage)
+            default:
+                XCTAssertEqual(item.status, status)
+                XCTAssertNil(item.error)
+            }
+        }
+    }
 }

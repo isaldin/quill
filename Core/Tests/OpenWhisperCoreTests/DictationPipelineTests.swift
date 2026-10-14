@@ -244,4 +244,20 @@ final class DictationPipelineTests: XCTestCase {
         XCTAssertNil(try history.record(id: recording.id))
         XCTAssertFalse(FileManager.default.fileExists(atPath: recording.fileURL.path))
     }
+
+    func testRotationKeepsAudioOfUntranscribedDictation() async throws {
+        config.audioLimitBytes = 150
+        transcriber.result = .failure(OpenRouterError.network("offline"))
+        let failed = try makeRecording(bytes: 100)
+        await pipeline.handle(failed, profile: clean)
+        try FileManager.default.setAttributes(
+            [.modificationDate: Date().addingTimeInterval(-600)], ofItemAtPath: failed.fileURL.path
+        )
+        transcriber.result = .success(TranscriptionResult(text: "сырой текст", costUSD: 0))
+        let second = try makeRecording(bytes: 100)
+        await pipeline.handle(second, profile: clean)
+
+        XCTAssertTrue(FileManager.default.fileExists(atPath: failed.fileURL.path))
+        XCTAssertEqual(try history.record(id: failed.id)?.audioFileName, "\(failed.id).m4a")
+    }
 }

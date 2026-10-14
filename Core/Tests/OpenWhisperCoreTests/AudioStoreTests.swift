@@ -74,4 +74,14 @@ final class AudioStoreTests: XCTestCase {
         XCTAssertEqual(removed, ["known"])
         XCTAssertTrue(exists("recording-now"))
     }
+
+    func testRotationNeverDeletesProtectedFiles() throws {
+        try makeFile("untranscribed", bytes: 100, modified: now.addingTimeInterval(-900))
+        try makeFile("done", bytes: 100, modified: now.addingTimeInterval(-600))
+        let removed = store.rotate(
+            limitBytes: 50, knownIDs: ["untranscribed", "done"], protectedIDs: ["untranscribed"], now: now
+        )
+        XCTAssertEqual(removed, ["done"])
+        XCTAssertTrue(exists("untranscribed"))
+    }
 }
