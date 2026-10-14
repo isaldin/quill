@@ -198,7 +198,7 @@ final class AppController {
 
     func showSettings() {
         windows.show(id: "settings", title: "Настройки OpenWhisper", size: NSSize(width: 520, height: 560)) {
-            Text("Настройки появятся в Task 13").padding()
+            SettingsView(controller: self)
         }
     }
 
