@@ -6,28 +6,60 @@ import SwiftUI
 struct SettingsView: View {
     @Bindable var controller: AppController
     @State private var apiKey = KeychainStore.read() ?? ""
+    @State private var showKey = false
     @State private var keyStatus = ""
+    @State private var transcriptionModel = ""
+    @State private var llmModel = ""
+    @FocusState private var focusedModel: ModelField?
     @State private var launchAtLogin = SMAppService.mainApp.status == .enabled
     @State private var audioUsage = ""
     @State private var microphoneGranted = Permissions.microphone == .authorized
     @State private var accessibilityGranted = Permissions.accessibilityGranted
     @State private var inputDevices = AudioInputDevice.all()
 
+    private enum ModelField {
+        case transcription
+        case llm
+    }
+
+    private static let createKeyURL = URL(string: "https://openrouter.ai/settings/keys")!
+
     var body: some View {
         @Bindable var settings = controller.settings
         Form {
             Section("OpenRouter") {
-                SecureField("API-ключ", text: $apiKey)
+                HStack {
+                    if showKey {
+                        TextField("API-ключ", text: $apiKey)
+                    } else {
+                        SecureField("API-ключ", text: $apiKey)
+                    }
+                    Button(showKey ? "Скрыть" : "Показать") { showKey.toggle() }
+                }
                 HStack {
                     Button("Сохранить") {
                         KeychainStore.save(apiKey)
                         keyStatus = apiKey.isEmpty ? "Ключ удалён" : "Сохранено"
                     }
                     Button("Проверить") { Task { await checkKey() } }
+                    Button("Скопировать") {
+                        NSPasteboard.general.clearContents()
+                        NSPasteboard.general.setString(apiKey, forType: .string)
+                        keyStatus = "Скопировано"
+                    }
+                    .disabled(apiKey.isEmpty)
                     Text(keyStatus).foregroundStyle(.secondary)
                 }
-                TextField("Модель распознавания", text: $settings.defaultTranscriptionModel)
-                TextField("Модель постобработки", text: $settings.defaultLLMModel)
+                Link("Создать ключ на OpenRouter", destination: Self.createKeyURL)
+                Text("Ключ хранится только на этой машине. На другом ноутбуке вставьте его один раз или создайте отдельный.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                TextField("Модель распознавания", text: $transcriptionModel)
+                    .focused($focusedModel, equals: .transcription)
+                    .onSubmit(commitModels)
+                TextField("Модель постобработки", text: $llmModel)
+                    .focused($focusedModel, equals: .llm)
+                    .onSubmit(commitModels)
             }
 
             Section("Горячие клавиши") {
@@ -57,6 +89,26 @@ struct SettingsView: View {
                 Toggle("Индикатор записи вверху экрана", isOn: $settings.showIndicator)
             }
 
+            Section("Синхронизация") {
+                if settings.syncLocation.isICloud {
+                    Text("Общие настройки и профили — в iCloud Drive → OpenWhisper")
+                } else {
+                    Text("Синхронизация выключена: iCloud Drive недоступен. Файлы — в ~/.config/openwhisper")
+                        .foregroundStyle(.orange)
+                }
+                Text("Микрофон, горячие клавиши, активный профиль, ключ и история — свои на каждой машине.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                if let loadError = settings.shared.loadError {
+                    Text("\(loadError). Используются последние корректные значения; любое изменение здесь перезапишет файл.")
+                        .foregroundStyle(.red)
+                }
+                if let saveError = settings.saveError {
+                    Text(saveError).foregroundStyle(.red)
+                }
+                Button("Открыть папку") { NSWorkspace.shared.open(settings.syncLocation.directory) }
+            }
+
             Section("Система") {
                 Toggle("Запускать при входе в систему", isOn: $launchAtLogin)
                     .onChange(of: launchAtLogin) { _, enabled in setLaunchAtLogin(enabled) }
@@ -83,13 +135,36 @@ struct SettingsView: View {
         .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
             refresh()
         }
+        .onChange(of: focusedModel) { _, _ in commitModels() }
+        .onChange(of: settings.defaultTranscriptionModel) { _, value in
+            if focusedModel != .transcription { transcriptionModel = value }
+        }
+        .onChange(of: settings.defaultLLMModel) { _, value in
+            if focusedModel != .llm { llmModel = value }
+        }
     }
 
     private func refresh() {
+        controller.settings.shared.reload()
+        transcriptionModel = controller.settings.defaultTranscriptionModel
+        llmModel = controller.settings.defaultLLMModel
         audioUsage = ByteCountFormatter.string(fromByteCount: controller.audio.totalSize(), countStyle: .file)
         microphoneGranted = Permissions.microphone == .authorized
         accessibilityGranted = Permissions.accessibilityGranted
         inputDevices = AudioInputDevice.all()
+    }
+
+    /// Записывает модели только если текст отличается: SharedSettingsStore не трогает файл без изменений.
+    private func commitModels() {
+        let settings = controller.settings
+        if transcriptionModel != settings.defaultTranscriptionModel {
+            settings.defaultTranscriptionModel = transcriptionModel
+            transcriptionModel = settings.defaultTranscriptionModel
+        }
+        if llmModel != settings.defaultLLMModel {
+            settings.defaultLLMModel = llmModel
+            llmModel = settings.defaultLLMModel
+        }
     }
 
     private func checkKey() async {
