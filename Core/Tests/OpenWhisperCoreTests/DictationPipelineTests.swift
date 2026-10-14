@@ -260,4 +260,71 @@ final class DictationPipelineTests: XCTestCase {
         XCTAssertTrue(FileManager.default.fileExists(atPath: failed.fileURL.path))
         XCTAssertEqual(try history.record(id: failed.id)?.audioFileName, "\(failed.id).m4a")
     }
+
+    private func recordEvents() -> Box<[PipelineEvent]> {
+        let events = Box<[PipelineEvent]>([])
+        pipeline.onEvent = { events.value.append($0) }
+        return events
+    }
+
+    func testEmitsStagesAndInsertedForHappyPath() async throws {
+        let events = recordEvents()
+        let recording = try makeRecording()
+        await pipeline.handle(recording, profile: clean)
+        XCTAssertEqual(events.value, [
+            .stage(id: recording.id, .transcribing),
+            .stage(id: recording.id, .postprocessing),
+            .finished(id: recording.id, .inserted),
+        ])
+    }
+
+    func testSkipsPostprocessingStageWhenDisabled() async throws {
+        let events = recordEvents()
+        let recording = try makeRecording()
+        await pipeline.handle(recording, profile: raw)
+        XCTAssertEqual(events.value, [
+            .stage(id: recording.id, .transcribing),
+            .finished(id: recording.id, .inserted),
+        ])
+    }
+
+    func testEmitsFailedOnTranscriptionError() async throws {
+        transcriber.result = .failure(OpenRouterError.timeout)
+        let events = recordEvents()
+        let recording = try makeRecording()
+        await pipeline.handle(recording, profile: clean)
+        XCTAssertEqual(events.value.last, .finished(id: recording.id, .failed(OpenRouterError.timeout.errorDescription!)))
+    }
+
+    func testEmitsFailedOnEmptyTranscript() async throws {
+        transcriber.result = .success(TranscriptionResult(text: "", costUSD: 0))
+        let events = recordEvents()
+        let recording = try makeRecording()
+        await pipeline.handle(recording, profile: clean)
+        XCTAssertEqual(events.value.last, .finished(id: recording.id, .failed("Пустая расшифровка")))
+    }
+
+    func testEmitsCopiedToClipboardOutcome() async throws {
+        inserter.outcome = .copiedToClipboard
+        let events = recordEvents()
+        let recording = try makeRecording()
+        await pipeline.handle(recording, profile: clean)
+        XCTAssertEqual(events.value.last, .finished(id: recording.id, .copiedToClipboard))
+    }
+
+    func testEmitsDiscardedForShortRecording() async throws {
+        let events = recordEvents()
+        let recording = try makeRecording(duration: 0.1)
+        await pipeline.handle(recording, profile: clean)
+        XCTAssertEqual(events.value, [.finished(id: recording.id, .discarded)])
+    }
+
+    func testHistoryActionsEmitNoEvents() async throws {
+        let recording = try makeRecording()
+        await pipeline.handle(recording, profile: clean)
+        let events = recordEvents()
+        await pipeline.reprocess(id: recording.id, profile: raw)
+        await pipeline.retranscribe(id: recording.id)
+        XCTAssertEqual(events.value, [])
+    }
 }

@@ -36,6 +36,8 @@ public final class DictationPipeline {
     public private(set) var activeJobs = 0
     /// Растёт после каждой записи в историю; окно истории перечитывает список по этому значению.
     public private(set) var historyRevision = 0
+    /// Стадии и итог новых диктовок — для плавающего индикатора.
+    @ObservationIgnored public var onEvent: (@MainActor (PipelineEvent) -> Void)?
 
     @ObservationIgnored private let history: HistoryStore
     @ObservationIgnored private let audio: AudioStore
@@ -69,6 +71,7 @@ public final class DictationPipeline {
     public func handle(_ recording: FinishedRecording, profile: Profile) async {
         guard recording.duration >= Self.minimumDuration else {
             try? FileManager.default.removeItem(at: recording.fileURL)
+            onEvent?(.finished(id: recording.id, .discarded))
             return
         }
         activeJobs += 1
@@ -80,7 +83,11 @@ public final class DictationPipeline {
         )
         save(record, isNew: true)
 
+        onEvent?(.stage(id: record.id, .transcribing))
         if await transcribe(&record, profile: profile) {
+            if profile.postprocess {
+                onEvent?(.stage(id: record.id, .postprocessing))
+            }
             await postprocess(&record, profile: profile)
             let outcome = await inserter.insert(record.finalText ?? "")
             record.status = .inserted
@@ -88,6 +95,9 @@ public final class DictationPipeline {
             if outcome == .copiedToClipboard {
                 notifier.notify(.copiedToClipboard)
             }
+            onEvent?(.finished(id: record.id, outcome == .pasted ? .inserted : .copiedToClipboard))
+        } else {
+            onEvent?(.finished(id: record.id, .failed(record.error ?? "ошибка распознавания")))
         }
         rotateAudio()
     }
