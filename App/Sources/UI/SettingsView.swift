@@ -11,6 +11,7 @@ struct SettingsView: View {
     @State private var audioUsage = ""
     @State private var microphoneGranted = Permissions.microphone == .authorized
     @State private var accessibilityGranted = Permissions.accessibilityGranted
+    @State private var inputDevices = AudioInputDevice.all()
 
     var body: some View {
         @Bindable var settings = controller.settings
@@ -35,11 +36,25 @@ struct SettingsView: View {
             }
 
             Section("Аудио") {
+                Picker("Микрофон", selection: $settings.inputDeviceUID) {
+                    Text("Системный по умолчанию").tag("")
+                    ForEach(inputDevices) { device in
+                        Text(device.name).tag(device.id)
+                    }
+                    if !settings.inputDeviceUID.isEmpty,
+                       !inputDevices.contains(where: { $0.id == settings.inputDeviceUID }) {
+                        Text("Отключён — используется системный").tag(settings.inputDeviceUID)
+                    }
+                }
+                Text("С Bluetooth-наушниками выберите встроенный микрофон: запись будет чище, а звук в наушниках не будет прерываться.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
                 Stepper(value: $settings.audioLimitGB, in: 0.1...50, step: 0.5) {
                     Text("Лимит: \(settings.audioLimitGB, specifier: "%.1f") ГБ")
                 }
                 Text("Занято: \(audioUsage)").foregroundStyle(.secondary)
                 Toggle("Звуки начала и конца записи", isOn: $settings.soundsEnabled)
+                Toggle("Индикатор записи вверху экрана", isOn: $settings.showIndicator)
             }
 
             Section("Система") {
@@ -74,6 +89,7 @@ struct SettingsView: View {
         audioUsage = ByteCountFormatter.string(fromByteCount: controller.audio.totalSize(), countStyle: .file)
         microphoneGranted = Permissions.microphone == .authorized
         accessibilityGranted = Permissions.accessibilityGranted
+        inputDevices = AudioInputDevice.all()
     }
 
     private func checkKey() async {

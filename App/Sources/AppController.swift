@@ -30,12 +30,14 @@ final class AppController {
     let audio: AudioStore
     let client: OpenRouterClient
     let pipeline: DictationPipeline
+    let indicator: RecordingIndicator
 
     @ObservationIgnored private let notifier: SystemNotifier
     @ObservationIgnored private let recorder = Recorder()
     @ObservationIgnored private let windows = WindowPresenter()
     @ObservationIgnored private var gesture = RecordGestureMachine()
     @ObservationIgnored private var autoStopTask: Task<Void, Never>?
+    @ObservationIgnored private var levelTask: Task<Void, Never>?
     @ObservationIgnored private var recordingProfile: Profile?
 
     static func makeOrDie() -> AppController {
@@ -71,6 +73,9 @@ final class AppController {
             config: { settings.pipelineConfig },
             profileLookup: { profiles.profile(id: $0) }
         )
+        let indicator = RecordingIndicator(isEnabled: { settings.showIndicator })
+        self.indicator = indicator
+        pipeline.onEvent = { indicator.apply($0) }
 
         try? profiles.bootstrap()
         profiles.startWatching()
@@ -135,7 +140,10 @@ final class AppController {
         let profile = profiles.activeProfile
         let id = UUID().uuidString
         do {
-            try recorder.start(id: id, url: audio.newRecordingURL(id: id))
+            try recorder.start(
+                id: id, url: audio.newRecordingURL(id: id),
+                deviceUID: settings.inputDeviceUID.isEmpty ? nil : settings.inputDeviceUID
+            )
         } catch {
             gesture.reset()
             notifier.notify(.recordingFailed(error.localizedDescription))
@@ -146,6 +154,13 @@ final class AppController {
         recordingState = .recording
         if settings.soundsEnabled { NSSound(named: "Tink")?.play() }
         KeyboardShortcuts.enable(.cancelRecording)
+        indicator.recordingStarted(id: id, profileName: profile.name)
+        levelTask = Task { [weak self] in
+            while !Task.isCancelled, let self {
+                self.indicator.setLevel(decibels: self.recorder.level)
+                try? await Task.sleep(for: .milliseconds(50))
+            }
+        }
         autoStopTask = Task { [weak self] in
             try? await Task.sleep(for: Self.maxRecordingDuration)
             guard !Task.isCancelled else { return }
@@ -154,19 +169,25 @@ final class AppController {
     }
 
     func stopRecording() {
-        guard recordingState == .recording,
-              let profile = recordingProfile,
-              let finished = recorder.stop()
-        else { return }
+        guard recordingState == .recording, let profile = recordingProfile else { return }
         endRecordingSession()
+        indicator.recordingStopped()
         if settings.soundsEnabled { NSSound(named: "Pop")?.play() }
-        Task { await pipeline.handle(finished, profile: profile) }
+        Task {
+            guard let finished = await recorder.stop() else {
+                indicator.hide()
+                notifier.notify(.recordingFailed("файл записи не создан"))
+                return
+            }
+            await pipeline.handle(finished, profile: profile)
+        }
     }
 
     func cancelRecording() {
         guard recordingState == .recording else { return }
         recorder.cancel()
         endRecordingSession()
+        indicator.recordingCancelled()
     }
 
     private func endRecordingSession() {
@@ -175,6 +196,8 @@ final class AppController {
         gesture.reset()
         autoStopTask?.cancel()
         autoStopTask = nil
+        levelTask?.cancel()
+        levelTask = nil
         KeyboardShortcuts.disable(.cancelRecording)
     }
 
