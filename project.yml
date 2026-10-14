@@ -1,0 +1,40 @@
+name: OpenWhisper
+options:
+  bundleIdPrefix: dev.saldin
+  deploymentTarget:
+    macOS: "15.0"
+  createIntermediateGroups: true
+settings:
+  base:
+    SWIFT_VERSION: "6.0"
+    DEVELOPMENT_TEAM: CQA364G4K8
+    CODE_SIGN_STYLE: Automatic
+    CODE_SIGN_IDENTITY: "Apple Development"
+    ENABLE_HARDENED_RUNTIME: NO
+    MARKETING_VERSION: "0.1.0"
+    CURRENT_PROJECT_VERSION: "1"
+packages:
+  OpenWhisperCore:
+    path: Core
+  KeyboardShortcuts:
+    url: https://github.com/sindresorhus/KeyboardShortcuts
+    exactVersion: 3.1.0
+targets:
+  OpenWhisper:
+    type: application
+    platform: macOS
+    sources: [App/Sources]
+    info:
+      path: App/Info.plist
+      properties:
+        CFBundleDisplayName: OpenWhisper
+        LSUIElement: true
+        NSMicrophoneUsageDescription: "OpenWhisper записывает голос для диктовки."
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: dev.saldin.openwhisper
+        PRODUCT_NAME: OpenWhisper
+    dependencies:
+      - package: OpenWhisperCore
+      - package: KeyboardShortcuts
+    scheme: {}
