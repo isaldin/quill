@@ -1,14 +1,17 @@
 import SwiftUI
-import OpenWhisperCore
 
 @main
 struct OpenWhisperApp: App {
+    @State private var controller = AppController.makeOrDie()
+
     var body: some Scene {
-        MenuBarExtra("OpenWhisper", systemImage: "waveform") {
-            Text("OpenWhisper \(OpenWhisperCore.version)")
-            Divider()
-            Button("Выйти") { NSApp.terminate(nil) }
-                .keyboardShortcut("q")
+        MenuBarExtra {
+            MenuContent(controller: controller)
+        } label: {
+            MenuBarIcon(
+                isRecording: controller.recordingState == .recording,
+                isProcessing: controller.pipeline.activeJobs > 0
+            )
         }
         .menuBarExtraStyle(.menu)
     }
