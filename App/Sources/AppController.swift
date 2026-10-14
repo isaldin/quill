@@ -7,6 +7,9 @@ import SwiftUI
 extension KeyboardShortcuts.Name {
     static let record = Self("record", initial: .init(.space, modifiers: [.option]))
     static let nextProfile = Self("nextProfile", initial: .init(.p, modifiers: [.option, .shift]))
+    /// Включается только на время записи. Carbon-хоткей поглощает Esc, поэтому он не доходит
+    /// до активного приложения (например, не прерывает Claude Code в терминале).
+    static let cancelRecording = Self("cancelRecording", initial: .init(.escape))
 }
 
 @MainActor
@@ -32,7 +35,6 @@ final class AppController {
     @ObservationIgnored private let recorder = Recorder()
     @ObservationIgnored private let windows = WindowPresenter()
     @ObservationIgnored private var gesture = RecordGestureMachine()
-    @ObservationIgnored private var escMonitors: [Any] = []
     @ObservationIgnored private var autoStopTask: Task<Void, Never>?
     @ObservationIgnored private var recordingProfile: Profile?
 
@@ -48,6 +50,7 @@ final class AppController {
         let settings = AppSettings()
         let profiles = ProfileStore(directory: ProfileStore.defaultDirectory, defaults: .standard)
         let history = try HistoryStore.open(at: HistoryStore.defaultURL)
+        try history.markInterrupted()
         let audio = try AudioStore(directory: AudioStore.defaultDirectory)
         let client = OpenRouterClient(apiKey: { KeychainStore.read() })
         let notifier = SystemNotifier()
@@ -91,6 +94,10 @@ final class AppController {
                 self.apply(self.gesture.keyUp(at: Date()))
             }
         }
+        KeyboardShortcuts.onKeyDown(for: .cancelRecording) { [weak self] in
+            MainActor.assumeIsolated { self?.cancelRecording() }
+        }
+        KeyboardShortcuts.disable(.cancelRecording)
         KeyboardShortcuts.onKeyDown(for: .nextProfile) { [weak self] in
             MainActor.assumeIsolated {
                 self?.profiles.reload()
@@ -138,7 +145,7 @@ final class AppController {
         recordingProfile = profile
         recordingState = .recording
         if settings.soundsEnabled { NSSound(named: "Tink")?.play() }
-        installEscMonitors()
+        KeyboardShortcuts.enable(.cancelRecording)
         autoStopTask = Task { [weak self] in
             try? await Task.sleep(for: Self.maxRecordingDuration)
             guard !Task.isCancelled else { return }
@@ -168,30 +175,7 @@ final class AppController {
         gesture.reset()
         autoStopTask?.cancel()
         autoStopTask = nil
-        removeEscMonitors()
-    }
-
-    private func installEscMonitors() {
-        let escape: UInt16 = 53
-        if let global = NSEvent.addGlobalMonitorForEvents(matching: .keyDown, handler: { [weak self] event in
-            guard event.keyCode == escape else { return }
-            MainActor.assumeIsolated { self?.cancelRecording() }
-        }) {
-            escMonitors.append(global)
-        }
-        if let local = NSEvent.addLocalMonitorForEvents(matching: .keyDown, handler: { [weak self] event in
-            if event.keyCode == escape {
-                MainActor.assumeIsolated { self?.cancelRecording() }
-            }
-            return event
-        }) {
-            escMonitors.append(local)
-        }
-    }
-
-    private func removeEscMonitors() {
-        escMonitors.forEach(NSEvent.removeMonitor)
-        escMonitors = []
+        KeyboardShortcuts.disable(.cancelRecording)
     }
 
     // MARK: - Windows
