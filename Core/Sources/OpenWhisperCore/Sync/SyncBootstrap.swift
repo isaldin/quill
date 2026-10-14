@@ -7,9 +7,8 @@ public enum SyncBootstrap {
         try fileManager.createDirectory(at: location.profilesDirectory, withIntermediateDirectories: true)
 
         let settingsURL = location.settingsURL
-        if !fileManager.fileExists(atPath: settingsURL.path), !ICloudPlaceholder.isPending(settingsURL) {
-            let initial = legacySettingsFile(location: location, legacyDirectory: legacyDirectory)
-                ?? SharedSettings(legacyDefaults: legacyDefaults)
+        if !fileManager.fileExists(atPath: settingsURL.path), !ICloudPlaceholder.isPending(settingsURL),
+           let initial = initialSettings(location: location, legacyDirectory: legacyDirectory, legacyDefaults: legacyDefaults) {
             try initial.encoded().write(to: settingsURL, options: .atomic)
         }
 
@@ -21,6 +20,20 @@ public enum SyncBootstrap {
         for source in markdownFiles(in: legacyDirectory.appending(path: "profiles", directoryHint: .isDirectory)) {
             try fileManager.copyItem(at: source, to: target.appending(path: source.lastPathComponent))
         }
+    }
+
+    /// В iCloud-режиме файл из одних значений по умолчанию не пишется: на втором Mac, где iCloud ещё
+    /// не докачал папку, он столкнулся бы с настоящим settings.json. Его создаст первое изменение настройки.
+    private static func initialSettings(
+        location: SyncLocation, legacyDirectory: URL, legacyDefaults: UserDefaults
+    ) -> SharedSettings? {
+        if let file = legacySettingsFile(location: location, legacyDirectory: legacyDirectory) {
+            return file
+        }
+        if !location.isICloud || SharedSettings.hasLegacyValues(in: legacyDefaults) {
+            return SharedSettings(legacyDefaults: legacyDefaults)
+        }
+        return nil
     }
 
     private static func legacySettingsFile(location: SyncLocation, legacyDirectory: URL) -> SharedSettings? {

@@ -35,9 +35,18 @@ final class SyncBootstrapTests: XCTestCase {
         try SyncBootstrap.run(location: location, legacyDirectory: legacy, legacyDefaults: defaults)
     }
 
-    func testCreatesDirectoriesAndDefaultSettings() throws {
+    func testCreatesDirectoriesAndDefaultSettingsInLocalMode() throws {
+        let local = SyncLocation(directory: root.appending(path: "local"), isICloud: false)
+        try run(local)
+        XCTAssertEqual(try sharedSettings(local), .defaults)
+        XCTAssertEqual(try profileNames(local), [])
+    }
+
+    func testICloudModeWithoutLegacySourcesWritesNoSettings() throws {
+        // Второй Mac, где iCloud ещё не докачал папку: файл с одними значениями по умолчанию
+        // столкнулся бы с настоящим settings.json и затёр бы его.
         try run(cloud)
-        XCTAssertEqual(try sharedSettings(cloud), .defaults)
+        XCTAssertFalse(FileManager.default.fileExists(atPath: cloud.settingsURL.path))
         XCTAssertEqual(try profileNames(cloud), [])
     }
 

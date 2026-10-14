@@ -50,6 +50,12 @@ public struct SharedSettings: Equatable, Sendable {
         self = normalized
     }
 
+    /// Сохранял ли v1 на этой машине хоть одну из общих настроек в UserDefaults.
+    public static func hasLegacyValues(in defaults: UserDefaults) -> Bool {
+        ["defaultTranscriptionModel", "defaultLLMModel", "audioLimitGB", "soundsEnabled", "showIndicator"]
+            .contains { defaults.object(forKey: $0) != nil }
+    }
+
     public var normalized: SharedSettings {
         var result = self
         let stt = defaultTranscriptionModel.trimmingCharacters(in: .whitespacesAndNewlines)

@@ -8,6 +8,8 @@ public final class SharedSettingsStore {
     public private(set) var settings: SharedSettings
     /// Текст ошибки разбора settings.json; пока он есть, работаем на последних корректных значениях.
     public private(set) var loadError: String?
+    /// Конфликтные копии iCloud (`settings 2.json`): их содержимое не читается, но пользователю стоит о них знать.
+    public private(set) var conflictCopies: [String] = []
 
     @ObservationIgnored private var watcher: DispatchSourceFileSystemObject?
 
@@ -19,6 +21,9 @@ public final class SharedSettingsStore {
     public var fileURL: URL { directory.appending(path: SharedSettings.fileName) }
 
     public func reload() {
+        let names = (try? FileManager.default.contentsOfDirectory(atPath: directory.path)) ?? []
+        let copies = names.filter { $0.hasPrefix("settings ") && $0.hasSuffix(".json") }.sorted()
+        if copies != conflictCopies { conflictCopies = copies }
         let url = fileURL
         guard FileManager.default.fileExists(atPath: url.path) else {
             if ICloudPlaceholder.isPending(url) {
@@ -38,6 +43,9 @@ public final class SharedSettingsStore {
     /// Меняет настройки и атомарно переписывает settings.json.
     /// Если ничего не изменилось и файл корректен, файл не трогается.
     public func update(_ change: (inout SharedSettings) -> Void) throws {
+        // Начинаем с актуального файла: иначе пропущенное наблюдателем изменение с другой машины
+        // откатилось бы при записи этой настройки.
+        reload()
         var next = settings
         change(&next)
         next = next.normalized

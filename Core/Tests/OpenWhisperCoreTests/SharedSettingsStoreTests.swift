@@ -115,4 +115,25 @@ final class SharedSettingsStoreTests: XCTestCase {
         try store.update { $0.showIndicator = false }
         XCTAssertFalse(try SharedSettings.decode(Data(contentsOf: fileURL)).showIndicator)
     }
+
+    func testUpdateStartsFromLatestFile() throws {
+        let store = SharedSettingsStore(directory: directory)
+        try store.update { $0.soundsEnabled = true }
+        // Другая машина поменяла модель, а наблюдатель это событие пропустил.
+        try SharedSettings(defaultLLMModel: "remote/llm").encoded().write(to: fileURL, options: .atomic)
+        try store.update { $0.soundsEnabled = false }
+        let saved = try SharedSettings.decode(Data(contentsOf: fileURL))
+        XCTAssertEqual(saved.defaultLLMModel, "remote/llm")
+        XCTAssertFalse(saved.soundsEnabled)
+    }
+
+    func testReportsConflictCopies() throws {
+        try writeFile("{}")
+        try Data("{}".utf8).write(to: directory.appending(path: "settings 2.json"))
+        try Data("{}".utf8).write(to: directory.appending(path: "settings 3.json"))
+        try Data("{}".utf8).write(to: directory.appending(path: "other.json"))
+        let store = SharedSettingsStore(directory: directory)
+        store.reload()
+        XCTAssertEqual(store.conflictCopies, ["settings 2.json", "settings 3.json"])
+    }
 }
