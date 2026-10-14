@@ -123,4 +123,30 @@ final class ProfileStoreTests: XCTestCase {
         try store.bootstrap()
         XCTAssertEqual(store.entries.map(\.id), ["a"])
     }
+
+    func testBootstrapDoesNotCreateBuiltinsWhileProfilesArePending() throws {
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        try Data().write(to: directory.appending(path: ".work.md.icloud"))
+        let store = makeStore()
+        try store.bootstrap()
+        XCTAssertFalse(FileManager.default.fileExists(atPath: directory.appending(path: "raw.md").path))
+        XCTAssertFalse(FileManager.default.fileExists(atPath: directory.appending(path: "clean.md").path))
+    }
+
+    func testPendingPlaceholderIsNotListedAsProfile() throws {
+        try write("a", "---\nname: A\n---\n")
+        try Data().write(to: directory.appending(path: ".work.md.icloud"))
+        let store = makeStore()
+        try store.bootstrap()
+        XCTAssertEqual(store.entries.map(\.id), ["a"])
+    }
+
+    func testPendingActiveProfileFallsBackToRaw() throws {
+        try write("raw", "---\nname: Raw\npostprocess: false\n---\n")
+        try Data().write(to: directory.appending(path: ".work.md.icloud"))
+        let store = makeStore()
+        try store.bootstrap()
+        store.activeProfileID = "work"
+        XCTAssertEqual(store.activeProfile.id, "raw")
+    }
 }

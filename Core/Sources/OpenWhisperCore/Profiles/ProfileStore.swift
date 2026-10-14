@@ -53,10 +53,12 @@ public final class ProfileStore {
         validProfiles.first { $0.id == id }
     }
 
-    /// Создаёт каталог; если в нём нет ни одного .md, кладёт встроенные профили. Затем загружает всё.
+    /// Создаёт каталог; если в нём нет ни одного .md и ни одной заглушки iCloud, кладёт встроенные профили.
+    /// Затем загружает всё.
     public func bootstrap() throws {
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
-        if try markdownFiles().isEmpty {
+        let pending = ICloudPlaceholder.pendingFiles(in: directory, pathExtension: "md")
+        if try markdownFiles().isEmpty, pending.isEmpty {
             for builtin in BuiltinProfiles.all {
                 try builtin.contents.write(
                     to: directory.appending(path: "\(builtin.id).md"), atomically: true, encoding: .utf8
@@ -67,6 +69,7 @@ public final class ProfileStore {
     }
 
     public func reload() {
+        ICloudPlaceholder.pendingFiles(in: directory, pathExtension: "md").forEach(ICloudPlaceholder.requestDownload)
         let files = (try? markdownFiles()) ?? []
         entries = files.map { url in
             let id = url.deletingPathExtension().lastPathComponent
