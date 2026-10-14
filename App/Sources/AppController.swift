@@ -204,7 +204,7 @@ final class AppController {
 
     func showHistory() {
         windows.show(id: "history", title: "История OpenWhisper", size: NSSize(width: 900, height: 600)) {
-            Text("История появится в Task 14").padding()
+            HistoryView(controller: self)
         }
     }
 }
