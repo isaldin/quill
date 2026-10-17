@@ -90,7 +90,7 @@ Hotkey ─▶ DictationPipeline ─▶ Recorder ─▶ Transcriber ─▶ PostPr
 | `AudioStore` | Пути к аудиофайлам, подсчёт размера, ротация | FileManager |
 | `KeychainStore` | Ключ OpenRouter в Keychain | Security |
 | `DictationPipeline` | Машина состояний диктовки, оркестрация, сохранение в историю на каждом шаге | все компоненты через протоколы |
-| UI | `MenuBarExtra`; окна «История» и «Настройки» — `NSWindow` с SwiftUI-содержимым (их нужно открывать из кода, например при 401); уведомления | SwiftUI, AppKit, UserNotifications |
+| UI | `NSStatusItem` + `NSMenu` (AppKit; SwiftUI `MenuBarExtra` терял картинку после сна/смены экранов, поэтому иконка выставляется заново по `didWakeNotification`, `screensDidWakeNotification`, `didChangeScreenParametersNotification`); содержимое меню — `StatusMenuModel` в Core; повторный запуск открытого приложения открывает «Настройки»; окна «История» и «Настройки» — `NSWindow` с SwiftUI-содержимым (их нужно открывать из кода, например при 401); уведомления | SwiftUI, AppKit, UserNotifications |
 
 Сторонние зависимости (SwiftPM): KeyboardShortcuts, GRDB.swift, Yams.
 
