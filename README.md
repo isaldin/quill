@@ -13,6 +13,21 @@ make test     # тесты логики
 make install  # сборка, копия в ~/Applications и запуск
 ```
 
+## Перенос на другой Mac
+
+```bash
+make release   # оптимизированная сборка → build/OpenWhisper.zip
+```
+
+На другом Mac:
+
+1. Перед первым запуском откройте в Finder «iCloud Drive → OpenWhisper» и дождитесь `settings.json` и `profiles/`.
+2. Распакуйте `OpenWhisper.zip` в `~/Applications` (или `/Applications`).
+3. Сборка не нотаризована, поэтому macOS её заблокирует. Один раз выполните
+   `xattr -dr com.apple.quarantine ~/Applications/OpenWhisper.app`
+   или откройте приложение и нажмите «Всё равно открыть» в «Системные настройки → Конфиденциальность и безопасность».
+4. Дальше — как «Первый запуск» ниже: ключ OpenRouter, доступ к микрофону и Accessibility, микрофон и горячие клавиши.
+
 ## Первый запуск
 
 1. Меню → «Настройки…» → вставить ключ OpenRouter → «Проверить».
