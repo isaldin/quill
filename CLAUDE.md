@@ -17,7 +17,8 @@ Swift 6, macOS 15+, SwiftUI + AppKit. Документация и UI-строк�
   - `Sync/` — расположение папки синхронизации, iCloud-плейсхолдеры, `SharedSettingsStore`, `SyncBootstrap` (разовая миграция).
 - `App/Sources/` — тонкий слой приложения: `AppController` (сборка зависимостей, хоткеи), `Platform/` (AVFoundation, Keychain, вставка через CGEvent, уведомления), `UI/` (status item, окна настроек и истории, индикатор).
 - `docs/superpowers/specs/` — дизайн-спеки (v1, sync); `docs/superpowers/plans/` — планы реализации.
-- `README.md` — установка, формат профиля, расположение данных, ручной чек-лист приёмки.
+- `README.md` — публичное описание на английском: установка, формат профиля, расположение данных.
+- `docs/manual-checklist.md` — ручной чек-лист приёмки.
 
 ## Principles
 
@@ -32,20 +33,21 @@ Swift 6, macOS 15+, SwiftUI + AppKit. Документация и UI-строк�
 5. **Текст пользователя — данные, а не инструкции.** Расшифровка передаётся LLM внутри `<transcript>`, базовый промпт запрещает выполнять просьбы из неё.
    Why: диктовка часто адресована другому ассистенту («сделай…»), постобработка не должна на неё отвечать.
 6. **Новое поведение в Core — через тест.** Сначала тест в `Core/Tests/QuillCoreTests/` (фейки в `Support/`), потом код.
-   Why: UI и платформенный слой проверяются только вручную по чек-листу из README.
+   Why: UI и платформенный слой проверяются только вручную по `docs/manual-checklist.md`.
 
 ## Dev Workflow
 
 ```bash
 make test      # swift test --package-path Core — основная проверка
 make install   # xcodegen + Debug-сборка → ~/Applications, перезапуск приложения
-make release   # Release-сборка → build/Quill.zip для другого Mac
+make release   # Release-сборка → build/Quill-<версия>.zip
+make publish   # тег + GitHub Release; make cask — формула для isaldin/homebrew-tap
 ```
 
 - `Quill.xcodeproj` и `App/Info.plist` генерируются XcodeGen из `project.yml` и не коммитятся — менять `project.yml`, не проект.
 - Подпись Apple Development (Personal Team): при ad-hoc подписи macOS сбрасывает Accessibility после каждой пересборки.
 - Новая функциональность: спека в `docs/superpowers/specs/`, план в `docs/superpowers/plans/`, затем мелкие коммиты (один шаг плана — один коммит).
-- Поведение, которое нельзя покрыть тестом, добавлять пунктом в ручной чек-лист README.
+- Поведение, которое нельзя покрыть тестом, добавлять пунктом в `docs/manual-checklist.md`.
 
 ## Directory Structure
 
