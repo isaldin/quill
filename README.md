@@ -1,71 +1,147 @@
 # Quill
 
-Личное приложение для диктовки на macOS в строке меню: горячая клавиша → речь →
-распознавание и постобработка через OpenRouter → вставка в активное окно.
+[![Latest release](https://img.shields.io/github/v/release/isaldin/quill?sort=semver)](https://github.com/isaldin/quill/releases/latest)
+[![Downloads](https://img.shields.io/github/downloads/isaldin/quill/total)](https://github.com/isaldin/quill/releases)
+[![macOS 15+](https://img.shields.io/badge/macOS-15%2B-000000?logo=apple&logoColor=white)](#requirements)
+[![Swift 6](https://img.shields.io/badge/Swift-6-F05138?logo=swift&logoColor=white)](https://www.swift.org)
+[![License: MIT](https://img.shields.io/github/license/isaldin/quill)](LICENSE)
 
-## Сборка
+Menu bar dictation for macOS. Press a hotkey, speak, and Quill transcribes your
+speech, cleans it up with an LLM and pastes the result into the active window.
+Speech recognition and post-processing run through [OpenRouter](https://openrouter.ai)
+with your own API key.
 
-Нужны Xcode 27 (лицензия принята), XcodeGen (`brew install xcodegen`) и вход в Xcode
-с Apple ID (Personal Team, подпись Apple Development).
+> [!NOTE]
+> The interface is currently in Russian only.
+
+## Features
+
+- **Global hotkey.** Hold ⌥Space to talk, or tap it to start and stop. Esc cancels.
+- **Pastes where you are.** The result goes into the focused app (terminal, IDE, browser),
+  and your clipboard is restored afterwards.
+- **Profiles.** Plain Markdown files with per-project instructions, vocabulary and models.
+  Switch with ⌥⇧P or from the menu; edits apply without a restart.
+- **Nothing gets lost.** Every dictation is saved to a searchable history before any
+  network request. If the API or network fails, you can re-transcribe it later.
+- **Sync between Macs.** Profiles and shared settings live in iCloud Drive.
+- **Cost tracking.** Each dictation shows its OpenRouter cost, plus a monthly total.
+- **Recording indicator** at the top of the screen with level meter and timer.
+  It does not take focus.
+
+## Requirements
+
+- macOS 15 Sequoia or later
+- An [OpenRouter API key](https://openrouter.ai/settings/keys) with credits
+
+## Install
+
+### Homebrew
 
 ```bash
-make test     # тесты логики
-make install  # сборка, копия в ~/Applications и запуск
+brew install --cask isaldin/tap/quill
 ```
 
-## Перенос на другой Mac
+### Manual
+
+Download `Quill-<version>.zip` from [Releases](https://github.com/isaldin/quill/releases/latest),
+unzip it and move `Quill.app` to `/Applications`.
+
+### First launch
+
+Quill is signed but not notarized by Apple, so macOS blocks it on first launch. Either run
 
 ```bash
-make release   # оптимизированная сборка → build/Quill.zip
+xattr -dr com.apple.quarantine /Applications/Quill.app
 ```
 
-На другом Mac:
+or try to open the app, then click **Open Anyway** in
+*System Settings → Privacy & Security*. You only need to do this once per install.
 
-1. Перед первым запуском откройте в Finder «iCloud Drive → Quill» и дождитесь `settings.json` и `profiles/`.
-2. Распакуйте `Quill.zip` в `~/Applications` (или `/Applications`).
-3. Сборка не нотаризована, поэтому macOS её заблокирует. Один раз выполните
-   `xattr -dr com.apple.quarantine ~/Applications/Quill.app`
-   или откройте приложение и нажмите «Всё равно открыть» в «Системные настройки → Конфиденциальность и безопасность».
-4. Дальше — как «Первый запуск» ниже: ключ OpenRouter, доступ к микрофону и Accessibility, микрофон и горячие клавиши.
+## Setup
 
-## Первый запуск
+1. Open Quill. A waveform icon appears in the menu bar. Open **Settings…** from its menu.
+2. Paste your OpenRouter key and click **Check**. The key is stored in the macOS Keychain.
+3. Grant microphone access (asked on the first recording) and Accessibility access
+   (needed to paste; use the **Request** button in settings).
+4. Press ⌥Space and start talking.
 
-1. Меню → «Настройки…» → вставить ключ OpenRouter → «Проверить».
-2. Разрешить микрофон (спросит при первой записи) и Accessibility (кнопка «Запросить»).
-3. Иконка-волна в строке меню; если её не видно (строка переполнена или скрыта «чёлкой»),
-   повторно откройте Quill из «Программ» или Spotlight — откроются настройки.
-4. ⌥Space — запись (удержание — «держи и говори», короткое нажатие — старт/стоп), Esc — отмена.
-   ⌥⇧P — следующий профиль. Клавиши меняются в настройках.
+If the menu bar icon is hidden (crowded menu bar or the notch), open Quill again from
+Applications or Spotlight to bring up the settings window.
 
-## Профили
+| Action | Default shortcut |
+| --- | --- |
+| Record (hold to talk, or tap to start/stop) | ⌥Space |
+| Cancel recording | Esc |
+| Next profile | ⌥⇧P |
 
-Файлы `iCloud Drive/Quill/profiles/*.md` (без iCloud Drive — `~/.config/quill/profiles/`).
-Имя файла — id профиля. Профили и `settings.json` в той же папке общие для всех ваших Mac.
+Shortcuts can be changed in settings. Without Accessibility access, Quill copies the
+text to the clipboard and asks you to press ⌘V.
 
-**Второй Mac:** перед первым запуском откройте в Finder «iCloud Drive → Quill» и дождитесь,
-пока там появятся `settings.json` и `profiles/`. Иначе приложение создаст свои встроенные профили,
-и iCloud сделает конфликтные копии (`clean 2.md`, `settings 2.json`) — их можно просто удалить.
+## Profiles
+
+A profile is a Markdown file in `iCloud Drive/Quill/profiles/` (or
+`~/.config/quill/profiles/` when iCloud Drive is unavailable). The file name is the
+profile id. Two profiles are built in: raw (no post-processing) and clean-up.
 
 ```markdown
 ---
 name: Frontend / Claude Code
-transcription_model: openai/gpt-4o-transcribe   # необязательно
-llm_model: openai/gpt-4.1-mini                  # необязательно
-postprocess: true                               # false — вставлять сырой текст
-language: ru                                    # необязательно
+transcription_model: openai/gpt-4o-transcribe   # optional
+llm_model: openai/gpt-4.1-mini                  # optional
+postprocess: true                               # false pastes the raw transcript
+language: en                                    # optional
 vocabulary:
   - useState
   - frontend-config
 ---
-Инструкция для постобработки в этом проекте.
+Post-processing instructions for this project.
 ```
 
-Словарь применяется только на этапе постобработки: эндпоинт распознавания OpenRouter
-подсказки не принимает.
+The vocabulary is used only during post-processing: OpenRouter's transcription endpoint
+does not accept hints.
 
-## Данные
+The transcript is sent to the LLM as data, wrapped in a `<transcript>` tag, and the base
+prompt tells the model not to follow requests inside it. Dictating "write a function
+that…" into a chat with another assistant gives you clean text, not an answer.
 
-- Общие настройки: `iCloud Drive/Quill/settings.json` (модели, лимит аудио, звуки, индикатор)
-- История: `~/Library/Application Support/Quill/history.sqlite`
-- Аудио: `~/Library/Application Support/Quill/audio/` (ротация по лимиту из настроек, по умолчанию 1 ГБ)
-- Ключ: Keychain этой машины, service `dev.saldin.quill` (не синхронизируется: «Настройки… → Показать/Скопировать»)
+## Sync between Macs
+
+`settings.json` (models, audio limit, sounds, indicator) and `profiles/` are shared through
+`iCloud Drive/Quill/`. Microphone, hotkeys, active profile, API key and history stay local
+to each Mac.
+
+On a second Mac, open *iCloud Drive → Quill* in Finder **before the first launch** and wait
+until `settings.json` and `profiles/` have downloaded. Otherwise Quill creates its built-in
+files and iCloud makes conflict copies (`settings 2.json`, `clean 2.md`) that you can delete.
+
+## Data and privacy
+
+| What | Where |
+| --- | --- |
+| OpenRouter API key | Keychain of this Mac, service `dev.saldin.quill`; never synced |
+| History | `~/Library/Application Support/Quill/history.sqlite` |
+| Audio recordings | `~/Library/Application Support/Quill/audio/` (rotated by size, 1 GB by default) |
+| Shared settings and profiles | `iCloud Drive/Quill/` |
+
+Audio and text are sent only to OpenRouter and the models you choose. Quill has no
+telemetry.
+
+## Building from source
+
+You need Xcode 27, [XcodeGen](https://github.com/yonaskolb/XcodeGen)
+(`brew install xcodegen`) and an Apple ID signed into Xcode. The project uses the Apple
+Development identity; set `DEVELOPMENT_TEAM` in `project.yml` to your own team.
+
+```bash
+make test      # unit tests for the core logic (swift test, no Xcode project needed)
+make install   # Debug build, copy to ~/Applications and launch
+make release   # Release build → build/Quill-<version>.zip
+```
+
+`Quill.xcodeproj` is generated from `project.yml` and is not committed. All logic lives in
+the `Core` Swift package and is covered by `swift test`; `App` is a thin AppKit/SwiftUI
+layer. UI behaviour is checked manually against [docs/manual-checklist.md](docs/manual-checklist.md).
+
+## License
+
+[MIT](LICENSE)
