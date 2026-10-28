@@ -1,15 +1,24 @@
+<div align="center">
+
 # Quill
 
-[![Latest release](https://img.shields.io/github/v/release/isaldin/quill?sort=semver)](https://github.com/isaldin/quill/releases/latest)
-[![Downloads](https://img.shields.io/github/downloads/isaldin/quill/total)](https://github.com/isaldin/quill/releases)
-[![macOS 15+](https://img.shields.io/badge/macOS-15%2B-000000?logo=apple&logoColor=white)](#requirements)
-[![Swift 6](https://img.shields.io/badge/Swift-6-F05138?logo=swift&logoColor=white)](https://www.swift.org)
-[![License: MIT](https://img.shields.io/github/license/isaldin/quill)](LICENSE)
+**Speak, and the text lands in the active window.**<br>
+Menu bar dictation for macOS with LLM clean-up via OpenRouter.
 
-Menu bar dictation for macOS. Press a hotkey, speak, and Quill transcribes your
-speech, cleans it up with an LLM and pastes the result into the active window.
-Speech recognition and post-processing run through [OpenRouter](https://openrouter.ai)
-with your own API key.
+[![Download](https://img.shields.io/github/v/release/isaldin/quill?sort=semver&style=for-the-badge&logo=github&label=download&color=2ea44f)](https://github.com/isaldin/quill/releases/latest)
+[![Homebrew](https://img.shields.io/badge/brew-isaldin%2Ftap%2Fquill-FBB040?style=for-the-badge&logo=homebrew&logoColor=white)](#homebrew)
+[![Downloads](https://img.shields.io/github/downloads/isaldin/quill/total?style=for-the-badge&logo=github&color=2ea44f)](https://github.com/isaldin/quill/releases)
+<br>
+[![macOS 15+](https://img.shields.io/badge/macOS-15%2B-111111?style=for-the-badge&logo=apple&logoColor=white)](#requirements)
+[![Swift 6](https://img.shields.io/badge/Swift-6-F05138?style=for-the-badge&logo=swift&logoColor=white)](https://www.swift.org)
+[![OpenRouter](https://img.shields.io/badge/OpenRouter-API-6467F2?style=for-the-badge&logo=openrouter&logoColor=white)](https://openrouter.ai)
+[![License: MIT](https://img.shields.io/badge/license-MIT-3DA639?style=for-the-badge)](LICENSE)
+
+</div>
+
+Press a hotkey and speak. Quill transcribes your speech, cleans it up with an LLM and
+pastes the result into the active window. Recognition and post-processing run through
+[OpenRouter](https://openrouter.ai) with your own API key.
 
 > [!NOTE]
 > The interface is currently in Russian only.
