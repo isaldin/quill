@@ -1,5 +1,5 @@
 import AVFoundation
-import OpenWhisperCore
+import QuillCore
 import SwiftUI
 
 struct HistoryView: View {

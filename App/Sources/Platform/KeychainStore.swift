@@ -2,7 +2,7 @@ import Foundation
 import Security
 
 enum KeychainStore {
-    private static let service = "dev.saldin.openwhisper"
+    private static let service = "dev.saldin.quill"
     private static let account = "openrouter"
 
     private static var baseQuery: [String: Any] {

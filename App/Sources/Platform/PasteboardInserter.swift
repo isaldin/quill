@@ -1,6 +1,6 @@
 import AppKit
 import ApplicationServices
-import OpenWhisperCore
+import QuillCore
 
 @MainActor
 final class PasteboardInserter: Inserter {

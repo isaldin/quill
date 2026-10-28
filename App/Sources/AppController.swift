@@ -1,7 +1,7 @@
 import AppKit
 import KeyboardShortcuts
 import Observation
-import OpenWhisperCore
+import QuillCore
 import SwiftUI
 
 extension KeyboardShortcuts.Name {
@@ -44,7 +44,7 @@ final class AppController {
         do {
             return try AppController()
         } catch {
-            fatalError("OpenWhisper не смог открыть хранилище: \(error)")
+            fatalError("Quill не смог открыть хранилище: \(error)")
         }
     }
 
@@ -217,13 +217,13 @@ final class AppController {
     // MARK: - Windows
 
     func showSettings() {
-        windows.show(id: "settings", title: "Настройки OpenWhisper", size: NSSize(width: 520, height: 560)) {
+        windows.show(id: "settings", title: "Настройки Quill", size: NSSize(width: 520, height: 560)) {
             SettingsView(controller: self)
         }
     }
 
     func showHistory() {
-        windows.show(id: "history", title: "История OpenWhisper", size: NSSize(width: 900, height: 600)) {
+        windows.show(id: "history", title: "История Quill", size: NSSize(width: 900, height: 600)) {
             HistoryView(controller: self)
         }
     }

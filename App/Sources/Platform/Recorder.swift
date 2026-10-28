@@ -1,5 +1,5 @@
 import AVFoundation
-import OpenWhisperCore
+import QuillCore
 
 enum RecorderError: LocalizedError {
     case noInputDevice

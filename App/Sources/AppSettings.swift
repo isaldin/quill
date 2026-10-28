@@ -1,6 +1,6 @@
 import Foundation
 import Observation
-import OpenWhisperCore
+import QuillCore
 
 @MainActor
 @Observable

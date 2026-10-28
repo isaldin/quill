@@ -1,6 +1,6 @@
 import AppKit
 import Observation
-import OpenWhisperCore
+import QuillCore
 import SwiftUI
 
 /// Плавающая «капсула» по центру сверху: запись, распознавание, итог.

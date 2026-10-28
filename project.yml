@@ -1,4 +1,4 @@
-name: OpenWhisper
+name: Quill
 options:
   bundleIdPrefix: dev.saldin
   deploymentTarget:
@@ -14,29 +14,29 @@ settings:
     MARKETING_VERSION: "0.1.0"
     CURRENT_PROJECT_VERSION: "1"
 packages:
-  OpenWhisperCore:
+  QuillCore:
     path: Core
   KeyboardShortcuts:
     url: https://github.com/sindresorhus/KeyboardShortcuts
     exactVersion: 3.1.0
 targets:
-  OpenWhisper:
+  Quill:
     type: application
     platform: macOS
     sources: [App/Sources]
     info:
       path: App/Info.plist
       properties:
-        CFBundleDisplayName: OpenWhisper
+        CFBundleDisplayName: Quill
         CFBundleShortVersionString: $(MARKETING_VERSION)
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         LSUIElement: true
-        NSMicrophoneUsageDescription: "OpenWhisper записывает голос для диктовки."
+        NSMicrophoneUsageDescription: "Quill записывает голос для диктовки."
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: dev.saldin.openwhisper
-        PRODUCT_NAME: OpenWhisper
+        PRODUCT_BUNDLE_IDENTIFIER: dev.saldin.quill
+        PRODUCT_NAME: Quill
     dependencies:
-      - package: OpenWhisperCore
+      - package: QuillCore
       - package: KeyboardShortcuts
     scheme: {}

@@ -7,20 +7,20 @@ test:
 	swift test --package-path Core
 
 build: gen
-	xcodebuild -project OpenWhisper.xcodeproj -scheme OpenWhisper -configuration Debug \
+	xcodebuild -project Quill.xcodeproj -scheme Quill -configuration Debug \
 		-derivedDataPath build -allowProvisioningUpdates -quiet build
 
 install: build
-	-pkill -x OpenWhisper
+	-pkill -x Quill
 	mkdir -p $(HOME)/Applications
-	rm -rf $(HOME)/Applications/OpenWhisper.app
-	cp -R build/Build/Products/Debug/OpenWhisper.app $(HOME)/Applications/
-	open $(HOME)/Applications/OpenWhisper.app
+	rm -rf $(HOME)/Applications/Quill.app
+	cp -R build/Build/Products/Debug/Quill.app $(HOME)/Applications/
+	open $(HOME)/Applications/Quill.app
 
-# Оптимизированная сборка для переноса на другой Mac: build/OpenWhisper.zip (ditto сохраняет подпись).
+# Оптимизированная сборка для переноса на другой Mac: build/Quill.zip (ditto сохраняет подпись).
 release: gen
-	xcodebuild -project OpenWhisper.xcodeproj -scheme OpenWhisper -configuration Release \
+	xcodebuild -project Quill.xcodeproj -scheme Quill -configuration Release \
 		-derivedDataPath build -allowProvisioningUpdates -quiet build
-	rm -f build/OpenWhisper.zip
-	ditto -c -k --keepParent build/Build/Products/Release/OpenWhisper.app build/OpenWhisper.zip
-	@echo "Готово: build/OpenWhisper.zip"
+	rm -f build/Quill.zip
+	ditto -c -k --keepParent build/Build/Products/Release/Quill.app build/Quill.zip
+	@echo "Готово: build/Quill.zip"

@@ -1,5 +1,5 @@
 import Foundation
-import OpenWhisperCore
+import QuillCore
 import UserNotifications
 
 @MainActor
@@ -15,7 +15,7 @@ final class SystemNotifier: Notifier {
             onNeedsAPIKey()
         }
         let content = UNMutableNotificationContent()
-        content.title = "OpenWhisper"
+        content.title = "Quill"
         content.body = notice.message
         let request = UNNotificationRequest(identifier: UUID().uuidString, content: content, trigger: nil)
         UNUserNotificationCenter.current().add(request)

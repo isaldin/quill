@@ -1,5 +1,5 @@
 import KeyboardShortcuts
-import OpenWhisperCore
+import QuillCore
 import ServiceManagement
 import SwiftUI
 
@@ -91,9 +91,9 @@ struct SettingsView: View {
 
             Section("Синхронизация") {
                 if settings.syncLocation.isICloud {
-                    Text("Общие настройки и профили — в iCloud Drive → OpenWhisper")
+                    Text("Общие настройки и профили — в iCloud Drive → Quill")
                 } else {
-                    Text("Синхронизация выключена: iCloud Drive недоступен. Файлы — в ~/.config/openwhisper")
+                    Text("Синхронизация выключена: iCloud Drive недоступен. Файлы — в ~/.config/quill")
                         .foregroundStyle(.orange)
                 }
                 Text("Микрофон, горячие клавиши, активный профиль, ключ и история — свои на каждой машине.")

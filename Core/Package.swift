@@ -2,10 +2,10 @@
 import PackageDescription
 
 let package = Package(
-    name: "OpenWhisperCore",
+    name: "QuillCore",
     platforms: [.macOS(.v15)],
     products: [
-        .library(name: "OpenWhisperCore", targets: ["OpenWhisperCore"]),
+        .library(name: "QuillCore", targets: ["QuillCore"]),
     ],
     dependencies: [
         .package(url: "https://github.com/groue/GRDB.swift.git", exact: "7.11.1"),
@@ -13,12 +13,12 @@ let package = Package(
     ],
     targets: [
         .target(
-            name: "OpenWhisperCore",
+            name: "QuillCore",
             dependencies: [
                 .product(name: "GRDB", package: "GRDB.swift"),
                 .product(name: "Yams", package: "Yams"),
             ]
         ),
-        .testTarget(name: "OpenWhisperCoreTests", dependencies: ["OpenWhisperCore"]),
+        .testTarget(name: "QuillCoreTests", dependencies: ["QuillCore"]),
     ]
 )

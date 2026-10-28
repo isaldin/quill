@@ -1,6 +1,6 @@
 import AppKit
 import Observation
-import OpenWhisperCore
+import QuillCore
 
 /// Иконка и меню в строке меню на чистом AppKit. SwiftUI `MenuBarExtra` иногда терял картинку
 /// после сна или смены экранов: элемент оставался, но ничего не рисовал. Здесь картинку
@@ -34,16 +34,16 @@ final class StatusItemController: NSObject, NSMenuDelegate {
         if force { button.image = nil }
         button.image = Self.image(for: state)
         button.toolTip = switch state {
-        case .idle: "OpenWhisper"
-        case .recording: "OpenWhisper — идёт запись"
-        case .processing: "OpenWhisper — обработка"
+        case .idle: "Quill"
+        case .recording: "Quill — идёт запись"
+        case .processing: "Quill — обработка"
         }
     }
 
     private static func image(for state: StatusIcon) -> NSImage? {
         switch state {
         case .idle:
-            let image = NSImage(systemSymbolName: "waveform", accessibilityDescription: "OpenWhisper")
+            let image = NSImage(systemSymbolName: "waveform", accessibilityDescription: "Quill")
             image?.isTemplate = true
             return image
         case .processing:
