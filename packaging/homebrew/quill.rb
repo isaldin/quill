@@ -7,7 +7,7 @@ cask "quill" do
   desc "Menu bar dictation with LLM post-processing via OpenRouter"
   homepage "https://github.com/isaldin/quill"
 
-  depends_on macos: ">= :sequoia"
+  depends_on macos: :sequoia
 
   app "Quill.app"
 
