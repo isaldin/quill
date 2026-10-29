@@ -1,4 +1,4 @@
-.PHONY: gen test build install release publish cask
+.PHONY: gen test build install release publish cask icon
 
 VERSION := $(shell sed -n 's/^ *MARKETING_VERSION: "\(.*\)"/\1/p' project.yml)
 ZIP := build/Quill-$(VERSION).zip
@@ -43,3 +43,12 @@ cask:
 	sed -e "s/@VERSION@/$(VERSION)/" -e "s/@SHA256@/$$(shasum -a 256 $(ZIP) | cut -d' ' -f1)/" \
 		packaging/homebrew/quill.rb > $(TAP_DIR)/Casks/quill.rb
 	@echo "Готово: $(TAP_DIR)/Casks/quill.rb"
+
+# Иконка приложения: scripts/render-app-icon.swift → все размеры AppIcon.appiconset.
+ICONSET := App/Resources/Assets.xcassets/AppIcon.appiconset
+icon:
+	swift scripts/render-app-icon.swift build/icon-1024.png
+	for s in 16 32 128 256 512; do \
+		sips -z $$s $$s build/icon-1024.png --out $(ICONSET)/icon_$${s}x$${s}.png >/dev/null; \
+		sips -z $$((s * 2)) $$((s * 2)) build/icon-1024.png --out $(ICONSET)/icon_$${s}x$${s}@2x.png >/dev/null; \
+	done

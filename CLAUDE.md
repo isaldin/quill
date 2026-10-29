@@ -42,6 +42,7 @@ make test      # swift test --package-path Core — основная прове�
 make install   # xcodegen + Debug-сборка → ~/Applications, перезапуск приложения
 make release   # Release-сборка → build/Quill-<версия>.zip
 make publish   # тег + GitHub Release; make cask — формула для isaldin/homebrew-tap
+make icon      # scripts/render-app-icon.swift → App/Resources/Assets.xcassets/AppIcon.appiconset
 ```
 
 - `Quill.xcodeproj` и `App/Info.plist` генерируются XcodeGen из `project.yml` и не коммитятся — менять `project.yml`, не проект.
@@ -53,6 +54,7 @@ make publish   # тег + GitHub Release; make cask — формула для is
 
 ```
 App/Sources/{Platform,UI}/   # приложение: AppKit/SwiftUI/AVFoundation
+App/Resources/               # Assets.xcassets (иконка генерируется make icon)
 Core/Sources/QuillCore/{Pipeline,OpenRouter,Storage,Profiles,Sync}/
 Core/Tests/QuillCoreTests/  # XCTest, фейки и StubURLProtocol в Support/
 docs/superpowers/{specs,plans}/
