@@ -22,6 +22,10 @@ Press a hotkey and speak. Quill transcribes your speech, cleans it up with an LL
 pastes the result into the active window. Recognition and post-processing run through
 [OpenRouter](https://openrouter.ai) with your own API key.
 
+<p align="center">
+  <img src="docs/images/history.png" alt="History window: searchable list of dictations with duration and cost">
+</p>
+
 > [!NOTE]
 > The interface is currently in Russian only.
 
@@ -38,6 +42,10 @@ pastes the result into the active window. Recognition and post-processing run th
 - **Cost tracking.** Each dictation shows its OpenRouter cost, plus a monthly total.
 - **Recording indicator** at the top of the screen with level meter and timer.
   It does not take focus.
+
+<p align="center">
+  <img src="docs/images/indicator.png" alt="Recording indicator with level meter, timer and active profile">
+</p>
 
 ## Requirements
 
@@ -80,6 +88,12 @@ or try to open the app, then click **Open Anyway** in
 
 If the menu bar icon is hidden (crowded menu bar or the notch), open Quill again from
 Applications or Spotlight to bring up the settings window.
+
+<p align="center">
+  <img src="docs/images/menu.png" alt="Menu bar menu: profiles, history, settings" valign="top">
+  &nbsp;&nbsp;
+  <img src="docs/images/settings.png" alt="Settings window" valign="top">
+</p>
 
 | Action | Default shortcut |
 | --- | --- |
