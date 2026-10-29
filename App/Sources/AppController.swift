@@ -1,4 +1,5 @@
 import AppKit
+import OSLog
 import KeyboardShortcuts
 import Observation
 import QuillCore
@@ -87,7 +88,12 @@ final class AppController {
         )
         let indicator = RecordingIndicator(isEnabled: { settings.showIndicator })
         self.indicator = indicator
-        pipeline.onEvent = { indicator.apply($0) }
+        pipeline.onEvent = { event in
+            if case .finished(let id, let outcome) = event {
+                Logger.recording.info("finished \(id, privacy: .public): \(String(describing: outcome), privacy: .public)")
+            }
+            indicator.apply(event)
+        }
 
         try? profiles.bootstrap()
         profiles.startWatching()

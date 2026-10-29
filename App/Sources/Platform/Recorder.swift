@@ -1,5 +1,12 @@
 import AVFoundation
+import OSLog
 import QuillCore
+
+extension Logger {
+    /// Служебный лог записи: устройство, длительности, причины отказа. Тексты диктовок сюда не пишутся.
+    /// Смотреть: `log show --last 1h --predicate 'subsystem == "dev.saldin.quill"'`
+    static let recording = Logger(subsystem: "dev.saldin.quill", category: "recording")
+}
 
 enum RecorderError: LocalizedError {
     case noInputDevice
@@ -37,6 +44,10 @@ final class Recorder {
         let recording = try CaptureRecording(id: id, url: url, device: device)
         recording.start()
         active = recording
+        Logger.recording.info("""
+            start \(id, privacy: .public): device «\(device.localizedName, privacy: .public)» \
+            uid \(device.uniqueID, privacy: .public), requested \(deviceUID ?? "default", privacy: .public)
+            """)
     }
 
     /// Уровень входного сигнала в дБ (-160…0).
@@ -45,9 +56,21 @@ final class Recorder {
     func stop() async -> FinishedRecording? {
         guard let recording = active else { return nil }
         active = nil
-        let duration = await recording.stop()
-        guard FileManager.default.fileExists(atPath: recording.url.path) else { return nil }
-        return FinishedRecording(id: recording.id, fileURL: recording.url, duration: duration, createdAt: recording.startedAt)
+        let (duration, elapsed) = await recording.stop()
+        guard FileManager.default.fileExists(atPath: recording.url.path) else {
+            Logger.recording.error("stop \(recording.id, privacy: .public): file not created, elapsed \(elapsed, format: .fixed(precision: 2))s")
+            return nil
+        }
+        let silent = await Task.detached { AudioSilence.isDigitalSilence(recording.url) }.value
+        let size = (try? FileManager.default.attributesOfItem(atPath: recording.url.path)[.size] as? Int) ?? -1
+        Logger.recording.info("""
+            stop \(recording.id, privacy: .public): audio \(duration, format: .fixed(precision: 2))s, \
+            elapsed \(elapsed, format: .fixed(precision: 2))s, \(size) bytes, silent \(silent)
+            """)
+        return FinishedRecording(
+            id: recording.id, fileURL: recording.url, duration: duration, elapsed: elapsed,
+            silentInput: silent ? recording.deviceName : nil, createdAt: recording.startedAt
+        )
     }
 
     func cancel() {
@@ -56,6 +79,7 @@ final class Recorder {
         Task {
             _ = await recording.stop()
             try? FileManager.default.removeItem(at: recording.url)
+            Logger.recording.info("cancel \(recording.id, privacy: .public)")
         }
     }
 }
@@ -63,6 +87,7 @@ final class Recorder {
 private final class CaptureRecording: NSObject, AVCaptureFileOutputRecordingDelegate, @unchecked Sendable {
     let id: String
     let url: URL
+    let deviceName: String
     let startedAt = Date()
 
     private let session = AVCaptureSession()
@@ -74,6 +99,7 @@ private final class CaptureRecording: NSObject, AVCaptureFileOutputRecordingDele
     init(id: String, url: URL, device: AVCaptureDevice) throws {
         self.id = id
         self.url = url
+        self.deviceName = device.localizedName
         super.init()
         let input = try AVCaptureDeviceInput(device: device)
         guard session.canAddInput(input), session.canAddOutput(output) else {
@@ -98,14 +124,16 @@ private final class CaptureRecording: NSObject, AVCaptureFileOutputRecordingDele
         output.connections.first?.audioChannels.first?.averagePowerLevel ?? -160
     }
 
-    /// Останавливает запись и ждёт, пока файл будет дописан. Возвращает длительность.
-    func stop() async -> TimeInterval {
+    /// Останавливает запись и ждёт, пока файл будет дописан.
+    /// Возвращает длительность звука в файле и время между стартом и остановкой.
+    func stop() async -> (duration: TimeInterval, elapsed: TimeInterval) {
+        let elapsed = Date().timeIntervalSince(startedAt)
         let recorded = output.recordedDuration.seconds
-        let duration = recorded.isFinite && recorded > 0 ? recorded : Date().timeIntervalSince(startedAt)
+        let duration = recorded.isFinite && recorded > 0 ? recorded : elapsed
         output.stopRecording()
         await waitUntilFinished()
         session.stopRunning()
-        return duration
+        return (duration, elapsed)
     }
 
     func fileOutput(
@@ -137,5 +165,22 @@ private final class CaptureRecording: NSObject, AVCaptureFileOutputRecordingDele
         waiters = []
         lock.unlock()
         pending.forEach { $0.resume() }
+    }
+}
+
+enum AudioSilence {
+    /// true, если в файле нет ни одного ненулевого отсчёта: устройство отдавало нули.
+    /// Даже тихая комната даёт шум, поэтому точные нули означают, что звук не дошёл.
+    /// Нечитаемый файл тишиной не считается — пусть его разбирает распознавание.
+    static func isDigitalSilence(_ url: URL) -> Bool {
+        guard let file = try? AVAudioFile(forReading: url),
+              let buffer = AVAudioPCMBuffer(pcmFormat: file.processingFormat, frameCapacity: 16_384)
+        else { return false }
+        while file.framePosition < file.length {
+            do { try file.read(into: buffer) } catch { return false }
+            guard let samples = buffer.floatChannelData?[0] else { return false }
+            for index in 0..<Int(buffer.frameLength) where samples[index] != 0 { return false }
+        }
+        return true
     }
 }
