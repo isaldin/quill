@@ -109,13 +109,17 @@ final class AppController {
         KeyboardShortcuts.onKeyDown(for: .record) { [weak self] in
             MainActor.assumeIsolated {
                 guard let self else { return }
-                self.apply(self.gesture.keyDown(at: Date()))
+                let action = self.gesture.keyDown(at: Date())
+                Logger.recording.info("hotkey down → \(String(describing: action), privacy: .public)")
+                self.apply(action)
             }
         }
         KeyboardShortcuts.onKeyUp(for: .record) { [weak self] in
             MainActor.assumeIsolated {
                 guard let self else { return }
-                self.apply(self.gesture.keyUp(at: Date()))
+                let action = self.gesture.keyUp(at: Date())
+                Logger.recording.info("hotkey up → \(String(describing: action), privacy: .public)")
+                self.apply(action)
             }
         }
         KeyboardShortcuts.onKeyDown(for: .cancelRecording) { [weak self] in
@@ -176,15 +180,10 @@ final class AppController {
         recordingState = .recording
         KeyboardShortcuts.enable(.cancelRecording)
         indicator.recordingConnecting(id: id, profileName: profile.name)
-        levelTask = Task { [weak self] in
-            while !Task.isCancelled, let self {
-                self.indicator.setLevel(decibels: self.recorder.level)
-                try? await Task.sleep(for: .milliseconds(50))
-            }
-        }
         autoStopTask = Task { [weak self] in
             try? await Task.sleep(for: Self.maxRecordingDuration)
             guard !Task.isCancelled else { return }
+            Logger.recording.info("auto stop: max duration reached")
             self?.stopRecording()
         }
     }
@@ -194,6 +193,14 @@ final class AppController {
         guard recordingState == .recording, recordingID == id else { return }
         gesture.captureStarted(at: Date())
         if settings.soundsEnabled { NSSound(named: "Tink")?.play() }
+        // Уровень опрашиваем только после старта: до этого сессия ещё запускается в фоне,
+        // и обращение к ней с главного потока может держать его до конца подключения.
+        levelTask = Task { [weak self] in
+            while !Task.isCancelled, let self {
+                self.indicator.setLevel(decibels: self.recorder.level)
+                try? await Task.sleep(for: .milliseconds(50))
+            }
+        }
         indicator.captureStarted(id: id)
     }
 

@@ -7,6 +7,7 @@ final class RecordGestureMachineTests: XCTestCase {
     func testHoldStartsAndReleaseStops() {
         var machine = RecordGestureMachine()
         XCTAssertEqual(machine.keyDown(at: t0), .start)
+        machine.captureStarted(at: t0 + 0.05)
         XCTAssertEqual(machine.keyUp(at: t0 + 1), .stop)
         XCTAssertEqual(machine.keyDown(at: t0 + 2), .start)
     }
@@ -44,15 +45,26 @@ final class RecordGestureMachineTests: XCTestCase {
         XCTAssertEqual(machine.keyDown(at: t0 + 10), .stop)
     }
 
+    func testReleaseBeforeCaptureStartIsTapEvenIfDeliveredLate() {
+        // Из лога: отпускание обработано через 3.36 с, но раньше сигнала о старте записи.
+        var machine = RecordGestureMachine()
+        XCTAssertEqual(machine.keyDown(at: t0), .start)
+        XCTAssertNil(machine.keyUp(at: t0 + 3.36))
+        machine.captureStarted(at: t0 + 3.36)
+        XCTAssertEqual(machine.keyDown(at: t0 + 10), .stop)
+    }
+
     func testReleaseExactlyAtThresholdIsTap() {
         var machine = RecordGestureMachine()
         _ = machine.keyDown(at: t0)
+        machine.captureStarted(at: t0)
         XCTAssertNil(machine.keyUp(at: t0 + RecordGestureMachine.holdThreshold))
     }
 
     func testKeyRepeatIsIgnored() {
         var machine = RecordGestureMachine()
         XCTAssertEqual(machine.keyDown(at: t0), .start)
+        machine.captureStarted(at: t0 + 0.05)
         XCTAssertNil(machine.keyDown(at: t0 + 0.5))
         XCTAssertEqual(machine.keyUp(at: t0 + 1), .stop)
     }

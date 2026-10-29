@@ -7,12 +7,16 @@ public enum GestureAction: Equatable, Sendable {
 
 /// Одна клавиша, два режима: удержание дольше holdThreshold — «держи и говори»,
 /// короткое нажатие — старт, следующее нажатие — стоп.
+/// Удержание отсчитывается от реального старта записи (`captureStarted`), а не от нажатия:
+/// микрофон iPhone или Bluetooth подключается секундами, и отпускание до старта — это нажатие,
+/// даже если событие пришло с опозданием.
 public struct RecordGestureMachine: Sendable {
     public static let holdThreshold: TimeInterval = 0.3
 
     private enum State {
         case idle
-        case pressed(since: Date)
+        /// nil — запись ещё не пошла (микрофон подключается).
+        case pressed(captureStartedAt: Date?)
         case toggled
         case pressedWhileToggled
     }
@@ -24,7 +28,7 @@ public struct RecordGestureMachine: Sendable {
     public mutating func keyDown(at time: Date) -> GestureAction? {
         switch state {
         case .idle:
-            state = .pressed(since: time)
+            state = .pressed(captureStartedAt: nil)
             return .start
         case .toggled:
             state = .pressedWhileToggled
@@ -37,7 +41,7 @@ public struct RecordGestureMachine: Sendable {
     public mutating func keyUp(at time: Date) -> GestureAction? {
         switch state {
         case .pressed(let since):
-            if time.timeIntervalSince(since) > Self.holdThreshold {
+            if let since, time.timeIntervalSince(since) > Self.holdThreshold {
                 state = .idle
                 return .stop
             }
@@ -51,12 +55,10 @@ public struct RecordGestureMachine: Sendable {
         }
     }
 
-    /// Микрофон подключился и запись реально пошла. Удержание считается с этого момента:
-    /// пока iPhone или Bluetooth подключаются несколько секунд, пользователь держит клавишу
-    /// в ожидании, и отпускание сразу после старта — это нажатие, а не «держи и говори».
+    /// Микрофон подключился и запись реально пошла: с этого момента считается удержание.
     public mutating func captureStarted(at time: Date) {
-        if case .pressed = state {
-            state = .pressed(since: time)
+        if case .pressed(nil) = state {
+            state = .pressed(captureStartedAt: time)
         }
     }
 
