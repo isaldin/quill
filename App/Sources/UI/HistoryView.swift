@@ -18,11 +18,14 @@ struct HistoryView: View {
                 HistoryRow(record: record, profileName: profileName(record.profileID))
             }
             .searchable(text: $query, prompt: "Поиск по тексту")
-            .safeAreaInset(edge: .bottom) {
+            .safeAreaInset(edge: .bottom, spacing: 0) {
+                // Без фона список прокручивается под подписью и текст накладывается.
                 Text("Расход за месяц: $\(monthCost, specifier: "%.4f")")
                     .font(.caption)
                     .foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity)
                     .padding(8)
+                    .background(.bar)
             }
             .navigationSplitViewColumnWidth(min: 280, ideal: 340)
         } detail: {
