@@ -20,6 +20,30 @@ final class RecordGestureMachineTests: XCTestCase {
         XCTAssertEqual(machine.keyDown(at: t0 + 6), .start)
     }
 
+    func testHoldingWhileMicConnectsThenReleasingIsTap() {
+        // Держал хоткей, пока подключался микрофон iPhone, отпустил сразу после старта записи.
+        var machine = RecordGestureMachine()
+        XCTAssertEqual(machine.keyDown(at: t0), .start)
+        machine.captureStarted(at: t0 + 3.7)
+        XCTAssertNil(machine.keyUp(at: t0 + 3.8))
+        XCTAssertEqual(machine.keyDown(at: t0 + 10), .stop)
+    }
+
+    func testHoldToTalkCountsFromCaptureStart() {
+        var machine = RecordGestureMachine()
+        XCTAssertEqual(machine.keyDown(at: t0), .start)
+        machine.captureStarted(at: t0 + 3.7)
+        XCTAssertEqual(machine.keyUp(at: t0 + 8), .stop)
+    }
+
+    func testCaptureStartAfterReleaseDoesNotChangeTap() {
+        var machine = RecordGestureMachine()
+        XCTAssertEqual(machine.keyDown(at: t0), .start)
+        XCTAssertNil(machine.keyUp(at: t0 + 0.1))
+        machine.captureStarted(at: t0 + 3.7)
+        XCTAssertEqual(machine.keyDown(at: t0 + 10), .stop)
+    }
+
     func testReleaseExactlyAtThresholdIsTap() {
         var machine = RecordGestureMachine()
         _ = machine.keyDown(at: t0)

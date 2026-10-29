@@ -192,6 +192,7 @@ final class AppController {
     /// Микрофон подключился: звук начала записи играем только теперь, чтобы не начинать говорить в пустоту.
     private func captureStarted(id: String) {
         guard recordingState == .recording, recordingID == id else { return }
+        gesture.captureStarted(at: Date())
         if settings.soundsEnabled { NSSound(named: "Tink")?.play() }
         indicator.captureStarted(id: id)
     }

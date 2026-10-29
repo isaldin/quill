@@ -51,6 +51,15 @@ public struct RecordGestureMachine: Sendable {
         }
     }
 
+    /// Микрофон подключился и запись реально пошла. Удержание считается с этого момента:
+    /// пока iPhone или Bluetooth подключаются несколько секунд, пользователь держит клавишу
+    /// в ожидании, и отпускание сразу после старта — это нажатие, а не «держи и говори».
+    public mutating func captureStarted(at time: Date) {
+        if case .pressed = state {
+            state = .pressed(since: time)
+        }
+    }
+
     /// Запись закончилась не от клавиши: Esc, лимит 10 минут, ошибка.
     public mutating func reset() {
         state = .idle
