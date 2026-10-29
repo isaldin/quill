@@ -33,6 +33,7 @@ public enum Notice: Equatable, Sendable {
     case storageFailed(String)
     case microphoneDenied
     case recordingFailed(String)
+    case silentInput(String)
 
     public var message: String {
         switch self {
@@ -45,6 +46,15 @@ public enum Notice: Equatable, Sendable {
         case .storageFailed(let reason): "Ошибка записи в историю: \(reason)"
         case .microphoneDenied: "Нет доступа к микрофону. Разрешите его в Системных настройках."
         case .recordingFailed(let reason): "Не удалось начать запись: \(reason)"
+        case .silentInput(let device): "Микрофон «\(device)» не передал звук. Проверьте микрофон в настройках; аудио сохранено в истории."
+        }
+    }
+
+    /// Короткая причина для записи в истории.
+    public var recordError: String {
+        switch self {
+        case .silentInput(let device): "Микрофон «\(device)» не передал звук"
+        default: message
         }
     }
 }

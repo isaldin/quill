@@ -4,13 +4,23 @@ import Observation
 public struct FinishedRecording: Equatable, Sendable {
     public let id: String
     public let fileURL: URL
+    /// Длительность звука в файле.
     public let duration: TimeInterval
+    /// Время между стартом и остановкой. Может быть больше `duration`, если микрофон не отдавал данные.
+    public let elapsed: TimeInterval
+    /// Имя микрофона, если вся запись — цифровая тишина (устройство отдавало нули).
+    public let silentInput: String?
     public let createdAt: Date
 
-    public init(id: String, fileURL: URL, duration: TimeInterval, createdAt: Date) {
+    public init(
+        id: String, fileURL: URL, duration: TimeInterval, elapsed: TimeInterval? = nil,
+        silentInput: String? = nil, createdAt: Date
+    ) {
         self.id = id
         self.fileURL = fileURL
         self.duration = duration
+        self.elapsed = elapsed ?? duration
+        self.silentInput = silentInput
         self.createdAt = createdAt
     }
 }
@@ -69,7 +79,9 @@ public final class DictationPipeline {
     }
 
     public func handle(_ recording: FinishedRecording, profile: Profile) async {
-        guard recording.duration >= Self.minimumDuration else {
+        // Случайное короткое нажатие определяем по времени, а не по звуку в файле:
+        // если микрофон не отдавал данные, длинная диктовка выглядела бы пустой и терялась.
+        guard recording.elapsed >= Self.minimumDuration else {
             try? FileManager.default.removeItem(at: recording.fileURL)
             onEvent?(.finished(id: recording.id, .discarded))
             return
@@ -82,6 +94,17 @@ public final class DictationPipeline {
             durationSec: recording.duration, audioFileName: recording.fileURL.lastPathComponent
         )
         save(record, isNew: true)
+
+        if let device = recording.silentInput {
+            let notice = Notice.silentInput(device)
+            record.status = .failed
+            record.error = notice.recordError
+            save(record)
+            notifier.notify(notice)
+            onEvent?(.finished(id: record.id, .failed(notice.recordError)))
+            rotateAudio()
+            return
+        }
 
         onEvent?(.stage(id: record.id, .transcribing))
         if await transcribe(&record, profile: profile) {

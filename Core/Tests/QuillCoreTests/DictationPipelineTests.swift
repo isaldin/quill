@@ -39,11 +39,15 @@ final class DictationPipelineTests: XCTestCase {
         try? FileManager.default.removeItem(at: audioDirectory)
     }
 
-    private func makeRecording(duration: TimeInterval = 2, bytes: Int = 10) throws -> FinishedRecording {
+    private func makeRecording(
+        duration: TimeInterval = 2, elapsed: TimeInterval? = nil, silentInput: String? = nil, bytes: Int = 10
+    ) throws -> FinishedRecording {
         let id = UUID().uuidString
         let url = audio.newRecordingURL(id: id)
         try Data(repeating: 1, count: bytes).write(to: url)
-        return FinishedRecording(id: id, fileURL: url, duration: duration, createdAt: created)
+        return FinishedRecording(
+            id: id, fileURL: url, duration: duration, elapsed: elapsed, silentInput: silentInput, createdAt: created
+        )
     }
 
     func testHappyPathInsertsProcessedTextAndStoresRecord() async throws {
@@ -317,6 +321,38 @@ final class DictationPipelineTests: XCTestCase {
         let recording = try makeRecording(duration: 0.1)
         await pipeline.handle(recording, profile: clean)
         XCTAssertEqual(events.value, [.finished(id: recording.id, .discarded)])
+    }
+
+    func testLongRecordingWithLittleAudioIsNotDiscarded() async throws {
+        // Микрофон почти не отдал данных, но пользователь говорил 9 секунд: файл нельзя выбрасывать.
+        let recording = try makeRecording(duration: 0.05, elapsed: 9)
+        await pipeline.handle(recording, profile: clean)
+        XCTAssertNotNil(try history.record(id: recording.id))
+        XCTAssertTrue(FileManager.default.fileExists(atPath: recording.fileURL.path))
+        XCTAssertEqual(transcriber.calls.count, 1)
+    }
+
+    func testQuickTapIsDiscardedByElapsedTime() async throws {
+        let events = recordEvents()
+        let recording = try makeRecording(duration: 2, elapsed: 0.2)
+        await pipeline.handle(recording, profile: clean)
+        XCTAssertEqual(events.value, [.finished(id: recording.id, .discarded)])
+        XCTAssertNil(try history.record(id: recording.id))
+    }
+
+    func testSilentInputIsKeptAsFailedWithoutTranscription() async throws {
+        let events = recordEvents()
+        let recording = try makeRecording(silentInput: "iPhone Microphone")
+        await pipeline.handle(recording, profile: clean)
+
+        let record = try XCTUnwrap(history.record(id: recording.id))
+        XCTAssertEqual(record.status, .failed)
+        XCTAssertEqual(record.error, "Микрофон «iPhone Microphone» не передал звук")
+        XCTAssertTrue(FileManager.default.fileExists(atPath: recording.fileURL.path))
+        XCTAssertTrue(transcriber.calls.isEmpty)
+        XCTAssertTrue(inserter.inserted.isEmpty)
+        XCTAssertEqual(notifier.notices, [.silentInput("iPhone Microphone")])
+        XCTAssertEqual(events.value.last, .finished(id: recording.id, .failed("Микрофон «iPhone Microphone» не передал звук")))
     }
 
     func testHistoryActionsEmitNoEvents() async throws {
