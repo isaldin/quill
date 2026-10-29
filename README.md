@@ -47,7 +47,9 @@ pastes the result into the active window. Recognition and post-processing run th
 ### Homebrew
 
 ```bash
-brew install --cask isaldin/tap/quill
+brew tap isaldin/tap
+brew trust isaldin/tap   # Homebrew 7+ requires trusting third-party taps
+brew install --cask quill
 ```
 
 ### Manual
