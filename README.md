@@ -1,5 +1,7 @@
 <div align="center">
 
+<img src="App/Resources/Assets.xcassets/AppIcon.appiconset/icon_128x128@2x.png" width="128" height="128" alt="Quill icon">
+
 # Quill
 
 **Speak, and the text lands in the active window.**<br>
