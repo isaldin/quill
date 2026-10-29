@@ -35,6 +35,8 @@ public enum IndicatorResult: Equatable, Sendable {
 
 public enum IndicatorPhase: Equatable, Sendable {
     case hidden
+    /// Хоткей нажат, микрофон ещё подключается (iPhone, Bluetooth): звук пока не пишется.
+    case connecting(profileName: String)
     case recording(profileName: String, startedAt: Date)
     case transcribing
     case postprocessing
@@ -57,15 +59,34 @@ public struct RecordingIndicatorModel: Equatable, Sendable {
         phase = .recording(profileName: profileName, startedAt: date)
     }
 
+    public mutating func recordingConnecting(id: String, profileName: String) {
+        trackedID = id
+        phase = .connecting(profileName: profileName)
+    }
+
+    /// Запись реально пошла: таймер считается с этого момента. Опоздавший сигнал
+    /// (запись уже остановлена или начата другая) ничего не меняет.
+    public mutating func captureStarted(id: String, at date: Date) {
+        guard id == trackedID, case .connecting(let profileName) = phase else { return }
+        phase = .recording(profileName: profileName, startedAt: date)
+    }
+
     public mutating func recordingStopped() {
-        guard case .recording = phase else { return }
+        guard isRecordingOrConnecting else { return }
         phase = .transcribing
     }
 
     public mutating func recordingCancelled() {
-        guard case .recording = phase else { return }
+        guard isRecordingOrConnecting else { return }
         trackedID = nil
         phase = .finished(.cancelled)
+    }
+
+    private var isRecordingOrConnecting: Bool {
+        switch phase {
+        case .connecting, .recording: true
+        default: false
+        }
     }
 
     public mutating func apply(_ event: PipelineEvent) {

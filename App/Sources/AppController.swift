@@ -40,6 +40,7 @@ final class AppController {
     @ObservationIgnored private var autoStopTask: Task<Void, Never>?
     @ObservationIgnored private var levelTask: Task<Void, Never>?
     @ObservationIgnored private var recordingProfile: Profile?
+    @ObservationIgnored private var recordingID: String?
 
     static func makeOrDie() -> AppController {
         do {
@@ -161,7 +162,8 @@ final class AppController {
         do {
             try recorder.start(
                 id: id, url: audio.newRecordingURL(id: id),
-                deviceUID: settings.inputDeviceUID.isEmpty ? nil : settings.inputDeviceUID
+                deviceUID: settings.inputDeviceUID.isEmpty ? nil : settings.inputDeviceUID,
+                onRunning: { [weak self] in self?.captureStarted(id: id) }
             )
         } catch {
             gesture.reset()
@@ -170,10 +172,10 @@ final class AppController {
         }
 
         recordingProfile = profile
+        recordingID = id
         recordingState = .recording
-        if settings.soundsEnabled { NSSound(named: "Tink")?.play() }
         KeyboardShortcuts.enable(.cancelRecording)
-        indicator.recordingStarted(id: id, profileName: profile.name)
+        indicator.recordingConnecting(id: id, profileName: profile.name)
         levelTask = Task { [weak self] in
             while !Task.isCancelled, let self {
                 self.indicator.setLevel(decibels: self.recorder.level)
@@ -185,6 +187,13 @@ final class AppController {
             guard !Task.isCancelled else { return }
             self?.stopRecording()
         }
+    }
+
+    /// Микрофон подключился: звук начала записи играем только теперь, чтобы не начинать говорить в пустоту.
+    private func captureStarted(id: String) {
+        guard recordingState == .recording, recordingID == id else { return }
+        if settings.soundsEnabled { NSSound(named: "Tink")?.play() }
+        indicator.captureStarted(id: id)
     }
 
     func stopRecording() {
@@ -212,6 +221,7 @@ final class AppController {
     private func endRecordingSession() {
         recordingState = .idle
         recordingProfile = nil
+        recordingID = nil
         gesture.reset()
         autoStopTask?.cancel()
         autoStopTask = nil

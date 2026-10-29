@@ -38,11 +38,12 @@ final class Recorder {
     private var active: CaptureRecording?
 
     /// `deviceUID == nil` или отключённое устройство — системный микрофон по умолчанию.
-    func start(id: String, url: URL, deviceUID: String?) throws {
+    /// `onRunning` вызывается, когда устройство подключилось и звук реально пишется.
+    func start(id: String, url: URL, deviceUID: String?, onRunning: @escaping @MainActor @Sendable () -> Void) throws {
         let device = deviceUID.flatMap(AVCaptureDevice.init(uniqueID:)) ?? AVCaptureDevice.default(for: .audio)
         guard let device else { throw RecorderError.noInputDevice }
         let recording = try CaptureRecording(id: id, url: url, device: device)
-        recording.start()
+        recording.start(onRunning: onRunning)
         active = recording
         Logger.recording.info("""
             start \(id, privacy: .public): device «\(device.localizedName, privacy: .public)» \
@@ -118,12 +119,13 @@ private final class CaptureRecording: NSObject, AVCaptureFileOutputRecordingDele
         session.addOutput(output)
     }
 
-    func start() {
+    func start(onRunning: @escaping @MainActor @Sendable () -> Void) {
         queue.async { [self] in
             session.startRunning()
             output.startRecording(to: url, outputFileType: .m4a, recordingDelegate: self)
             let delay = Date().timeIntervalSince(startedAt)
             Logger.recording.info("capture \(self.id, privacy: .public): running after \(delay, format: .fixed(precision: 2))s")
+            Task { @MainActor in onRunning() }
         }
     }
 

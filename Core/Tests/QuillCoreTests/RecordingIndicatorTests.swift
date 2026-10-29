@@ -22,6 +22,42 @@ final class RecordingIndicatorTests: XCTestCase {
         XCTAssertEqual(model.phase, .hidden)
     }
 
+    func testConnectingUntilCaptureStartsThenTimerFromCaptureStart() {
+        var model = RecordingIndicatorModel()
+        model.recordingConnecting(id: "a", profileName: "Чистка")
+        XCTAssertEqual(model.phase, .connecting(profileName: "Чистка"))
+        XCTAssertNil(model.autoHideDelay)
+        model.captureStarted(id: "a", at: t0 + 3)
+        XCTAssertEqual(model.phase, .recording(profileName: "Чистка", startedAt: t0 + 3))
+    }
+
+    func testStopWhileConnectingGoesToTranscribing() {
+        var model = RecordingIndicatorModel()
+        model.recordingConnecting(id: "a", profileName: "P")
+        model.recordingStopped()
+        XCTAssertEqual(model.phase, .transcribing)
+        model.captureStarted(id: "a", at: t0)
+        XCTAssertEqual(model.phase, .transcribing)
+        model.apply(.finished(id: "a", .inserted))
+        XCTAssertEqual(model.phase, .finished(.inserted))
+    }
+
+    func testCancelWhileConnecting() {
+        var model = RecordingIndicatorModel()
+        model.recordingConnecting(id: "a", profileName: "P")
+        model.recordingCancelled()
+        XCTAssertEqual(model.phase, .finished(.cancelled))
+        model.captureStarted(id: "a", at: t0)
+        XCTAssertEqual(model.phase, .finished(.cancelled))
+    }
+
+    func testCaptureStartOfAnotherRecordingIsIgnored() {
+        var model = RecordingIndicatorModel()
+        model.recordingConnecting(id: "b", profileName: "P")
+        model.captureStarted(id: "a", at: t0)
+        XCTAssertEqual(model.phase, .connecting(profileName: "P"))
+    }
+
     func testEventsOfPreviousDictationAreIgnoredOnceNewRecordingStarts() {
         var model = RecordingIndicatorModel()
         model.recordingStarted(id: "a", profileName: "P", at: t0)

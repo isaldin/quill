@@ -21,8 +21,13 @@ final class RecordingIndicator {
         self.isEnabled = isEnabled
     }
 
-    func recordingStarted(id: String, profileName: String) {
-        model.recordingStarted(id: id, profileName: profileName, at: Date())
+    func recordingConnecting(id: String, profileName: String) {
+        model.recordingConnecting(id: id, profileName: profileName)
+        update()
+    }
+
+    func captureStarted(id: String) {
+        model.captureStarted(id: id, at: Date())
         update()
     }
 
@@ -123,6 +128,13 @@ private struct IndicatorView: View {
         switch indicator.model.phase {
         case .hidden:
             EmptyView()
+        case .connecting(let profileName):
+            HStack(spacing: 10) {
+                ProgressView().controlSize(.small)
+                Text("Подключаю микрофон…")
+                Text(profileName).foregroundStyle(.secondary).lineLimit(1)
+                Text("Esc — отмена").font(.caption).foregroundStyle(.tertiary)
+            }
         case .recording(let profileName, let startedAt):
             HStack(spacing: 10) {
                 Image(systemName: "circle.fill")
