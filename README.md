@@ -39,7 +39,7 @@ pastes the result into the active window. Recognition and post-processing run th
 
 ## Requirements
 
-- macOS 15 Sequoia or later
+- macOS 15 Sequoia or later, Apple silicon or Intel
 - An [OpenRouter API key](https://openrouter.ai/settings/keys) with credits
 
 ## Install
