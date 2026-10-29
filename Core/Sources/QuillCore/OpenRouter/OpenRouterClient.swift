@@ -2,6 +2,8 @@ import Foundation
 
 public enum OpenRouterError: Error, Equatable, LocalizedError {
     case missingAPIKey
+    /// Ключ есть, но хранилище не отдало его (например, Keychain отказал в доступе).
+    case keyUnavailable(String)
     case unauthorized
     case paymentRequired
     case rateLimited
@@ -13,6 +15,7 @@ public enum OpenRouterError: Error, Equatable, LocalizedError {
     public var errorDescription: String? {
         switch self {
         case .missingAPIKey: "ключ OpenRouter не задан"
+        case .keyUnavailable(let message): "не удалось получить ключ OpenRouter: \(message)"
         case .unauthorized: "ключ OpenRouter неверный (401)"
         case .paymentRequired: "недостаточно средств на OpenRouter (402)"
         case .rateLimited: "слишком много запросов (429)"
@@ -49,12 +52,12 @@ public struct OpenRouterClient: Sendable {
 
     private let baseURL: URL
     private let session: URLSession
-    private let apiKey: @Sendable () -> String?
+    private let apiKey: @Sendable () throws -> String?
 
     public init(
         baseURL: URL = OpenRouterClient.defaultBaseURL,
         session: URLSession = .shared,
-        apiKey: @escaping @Sendable () -> String?
+        apiKey: @escaping @Sendable () throws -> String?
     ) {
         self.baseURL = baseURL
         self.session = session
@@ -139,7 +142,13 @@ public struct OpenRouterClient: Sendable {
     }
 
     private func makeRequest(_ path: String, timeout: TimeInterval) throws -> URLRequest {
-        guard let key = apiKey(), !key.isEmpty else { throw OpenRouterError.missingAPIKey }
+        let key: String?
+        do {
+            key = try apiKey()
+        } catch {
+            throw OpenRouterError.keyUnavailable(error.localizedDescription)
+        }
+        guard let key, !key.isEmpty else { throw OpenRouterError.missingAPIKey }
         var request = URLRequest(url: baseURL.appending(path: path))
         request.timeoutInterval = timeout
         request.setValue("Bearer \(key)", forHTTPHeaderField: "Authorization")

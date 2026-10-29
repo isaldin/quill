@@ -87,6 +87,20 @@ final class OpenRouterClientTests: XCTestCase {
         XCTAssertFalse(called.value)
     }
 
+    func testKeyReadFailureIsNotReportedAsMissingKey() async {
+        struct KeychainFailure: LocalizedError {
+            var errorDescription: String? { "Keychain: доступ запрещён (код -25293)" }
+        }
+        let called = Flag()
+        StubURLProtocol.handler = { request in
+            called.value = true
+            return try StubURLProtocol.respond(status: 200, json: "{}")(request)
+        }
+        let client = OpenRouterClient(session: StubURLProtocol.makeSession(), apiKey: { throw KeychainFailure() })
+        await assertThrows(.keyUnavailable("Keychain: доступ запрещён (код -25293)")) { try await client.checkKey() }
+        XCTAssertFalse(called.value)
+    }
+
     func testMapsHTTPStatusCodes() async {
         let cases: [(Int, String, OpenRouterError)] = [
             (401, "{}", .unauthorized),

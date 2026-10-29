@@ -5,9 +5,9 @@ import SwiftUI
 
 struct SettingsView: View {
     @Bindable var controller: AppController
-    @State private var apiKey = KeychainStore.read() ?? ""
+    @State private var apiKey: String
     @State private var showKey = false
-    @State private var keyStatus = ""
+    @State private var keyStatus: String
     @State private var transcriptionModel = ""
     @State private var llmModel = ""
     @FocusState private var focusedModel: ModelField?
@@ -24,6 +24,17 @@ struct SettingsView: View {
 
     private static let createKeyURL = URL(string: "https://openrouter.ai/settings/keys")!
 
+    init(controller: AppController) {
+        self.controller = controller
+        do {
+            _apiKey = State(initialValue: try KeychainStore.read() ?? "")
+            _keyStatus = State(initialValue: "")
+        } catch {
+            _apiKey = State(initialValue: "")
+            _keyStatus = State(initialValue: "✗ " + Self.describe(error))
+        }
+    }
+
     var body: some View {
         @Bindable var settings = controller.settings
         Form {
@@ -38,7 +49,7 @@ struct SettingsView: View {
                 }
                 HStack {
                     Button("Сохранить") {
-                        KeychainStore.save(apiKey)
+                        guard saveKey() else { return }
                         keyStatus = apiKey.isEmpty ? "Ключ удалён" : "Сохранено"
                     }
                     Button("Проверить") { Task { await checkKey() } }
@@ -177,14 +188,29 @@ struct SettingsView: View {
     }
 
     private func checkKey() async {
-        KeychainStore.save(apiKey)
+        guard saveKey() else { return }
         keyStatus = "Проверяю…"
         do {
             try await controller.client.checkKey()
             keyStatus = "✓ Ключ работает"
         } catch {
-            keyStatus = "✗ " + ((error as? LocalizedError)?.errorDescription ?? error.localizedDescription)
+            keyStatus = "✗ " + Self.describe(error)
         }
+    }
+
+    /// Ошибку Keychain показывает рядом с кнопками и возвращает false.
+    private func saveKey() -> Bool {
+        do {
+            try KeychainStore.save(apiKey)
+            return true
+        } catch {
+            keyStatus = "✗ " + Self.describe(error)
+            return false
+        }
+    }
+
+    private static func describe(_ error: Error) -> String {
+        (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
     }
 
     private func setLaunchAtLogin(_ enabled: Bool) {

@@ -66,7 +66,7 @@ final class AppController {
         let history = try HistoryStore.open(at: HistoryStore.defaultURL)
         try history.markInterrupted()
         let audio = try AudioStore(directory: AudioStore.defaultDirectory)
-        let client = OpenRouterClient(apiKey: { KeychainStore.read() })
+        let client = OpenRouterClient(apiKey: { try KeychainStore.read() })
         let notifier = SystemNotifier()
 
         self.settings = settings
