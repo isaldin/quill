@@ -11,6 +11,8 @@ cask "quill" do
 
   app "Quill.app"
 
+  uninstall quit: "dev.saldin.quill"
+
   zap trash: [
     "~/Library/Application Support/Quill",
     "~/Library/Preferences/dev.saldin.quill.plist",
