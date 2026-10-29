@@ -4,7 +4,7 @@ import QuillCore
 
 extension Logger {
     /// Служебный лог записи: устройство, длительности, причины отказа. Тексты диктовок сюда не пишутся.
-    /// Смотреть: `log show --last 1h --predicate 'subsystem == "dev.saldin.quill"'`
+    /// Смотреть: `/usr/bin/log show --last 1h --info --predicate 'subsystem == "dev.saldin.quill"'`
     static let recording = Logger(subsystem: "dev.saldin.quill", category: "recording")
 }
 
@@ -92,6 +92,9 @@ private final class CaptureRecording: NSObject, AVCaptureFileOutputRecordingDele
 
     private let session = AVCaptureSession()
     private let output = AVCaptureAudioFileOutput()
+    /// startRunning блокирует, пока устройство не подключится (микрофон iPhone — до нескольких секунд).
+    /// На главном потоке это задерживало отпускание клавиши, и короткое нажатие читалось как удержание.
+    private let queue = DispatchQueue(label: "dev.saldin.quill.capture")
     private let lock = NSLock()
     private var isFinished = false
     private var waiters: [CheckedContinuation<Void, Never>] = []
@@ -116,8 +119,12 @@ private final class CaptureRecording: NSObject, AVCaptureFileOutputRecordingDele
     }
 
     func start() {
-        session.startRunning()
-        output.startRecording(to: url, outputFileType: .m4a, recordingDelegate: self)
+        queue.async { [self] in
+            session.startRunning()
+            output.startRecording(to: url, outputFileType: .m4a, recordingDelegate: self)
+            let delay = Date().timeIntervalSince(startedAt)
+            Logger.recording.info("capture \(self.id, privacy: .public): running after \(delay, format: .fixed(precision: 2))s")
+        }
     }
 
     var level: Float {
@@ -128,11 +135,17 @@ private final class CaptureRecording: NSObject, AVCaptureFileOutputRecordingDele
     /// Возвращает длительность звука в файле и время между стартом и остановкой.
     func stop() async -> (duration: TimeInterval, elapsed: TimeInterval) {
         let elapsed = Date().timeIntervalSince(startedAt)
-        let recorded = output.recordedDuration.seconds
+        // Через ту же очередь: если устройство ещё подключается, остановка дождётся старта.
+        let recorded = await withCheckedContinuation { (continuation: CheckedContinuation<Double, Never>) in
+            queue.async { [self] in
+                let recorded = output.recordedDuration.seconds
+                output.stopRecording()
+                continuation.resume(returning: recorded)
+            }
+        }
         let duration = recorded.isFinite && recorded > 0 ? recorded : elapsed
-        output.stopRecording()
         await waitUntilFinished()
-        session.stopRunning()
+        queue.async { [self] in session.stopRunning() }
         return (duration, elapsed)
     }
 
@@ -140,6 +153,9 @@ private final class CaptureRecording: NSObject, AVCaptureFileOutputRecordingDele
         _ output: AVCaptureFileOutput, didFinishRecordingTo outputFileURL: URL,
         from connections: [AVCaptureConnection], error: Error?
     ) {
+        if let error {
+            Logger.recording.error("file output \(self.id, privacy: .public): \(error.localizedDescription, privacy: .public)")
+        }
         finish()
     }
 
